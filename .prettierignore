@@ -7,3 +7,4 @@ release
 pnpm-lock.yaml
 JTs-Hud
 *.min.js
+packages/theme/src/css/tokens.css
