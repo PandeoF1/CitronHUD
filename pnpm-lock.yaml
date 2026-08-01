@@ -26,15 +26,6 @@ importers:
 
   apps/client:
     dependencies:
-      '@citronhud/contracts':
-        specifier: workspace:*
-        version: link:../../packages/contracts
-      '@citronhud/gsi':
-        specifier: workspace:*
-        version: link:../../packages/gsi
-      '@citronhud/theme':
-        specifier: workspace:*
-        version: link:../../packages/theme
       adm-zip:
         specifier: ^0.5.16
         version: 0.5.18
@@ -63,9 +54,18 @@ importers:
         specifier: ^4.1.12
         version: 4.4.3
     devDependencies:
+      '@citronhud/contracts':
+        specifier: workspace:*
+        version: link:../../packages/contracts
+      '@citronhud/gsi':
+        specifier: workspace:*
+        version: link:../../packages/gsi
       '@citronhud/overlay':
         specifier: workspace:*
         version: link:../overlay
+      '@citronhud/theme':
+        specifier: workspace:*
+        version: link:../../packages/theme
       '@electron-toolkit/preload':
         specifier: ^3.0.2
         version: 3.0.2(electron@35.7.5)
