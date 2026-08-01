@@ -1,0 +1,51 @@
+appId: gg.citron.hud
+productName: CitronHUD
+directories:
+  buildResources: resources
+  output: release
+
+files:
+  - out/**/*
+  - package.json
+  - '!**/*.map'
+
+# L'overlay compilé et les images de radar sont copiés hors du bundle : le
+# serveur local les sert à OBS en fichiers statiques.
+extraResources:
+  - from: ../overlay/dist
+    to: overlay
+  - from: resources/radars
+    to: radars
+
+# `ffmpeg-static` et `better-sqlite3` sont des binaires : les laisser dans
+# l'archive asar les rendrait inexécutables.
+asarUnpack:
+  - '**/node_modules/ffmpeg-static/**'
+  - '**/node_modules/better-sqlite3/**'
+
+win:
+  target:
+    - nsis
+  artifactName: ${name}-${version}-setup.${ext}
+
+nsis:
+  oneClick: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: always
+  shortcutName: CitronHUD
+
+mac:
+  target:
+    - dmg
+  category: public.app-category.video
+
+linux:
+  target:
+    - AppImage
+  category: AudioVideo
+
+# Canal de mise à jour lu par electron-updater.
+publish:
+  provider: github
+  owner: citron-esport
+  repo: citronhud

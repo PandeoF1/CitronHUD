@@ -1,0 +1,467 @@
+import { app, BrowserWindow, shell, ipcMain, clipboard, dialog } from 'electron'
+import { join } from 'node:path'
+import { randomUUID } from 'node:crypto'
+import { electronApp, is, optimizer } from '@electron-toolkit/utils'
+import { CitronEngine } from '@citronhud/gsi'
+import type {
+  ClientSettings,
+  ConnectionStatus,
+  Highlight,
+  HudConfig,
+  HudState,
+  Side,
+  Slot,
+  TeamSlot
+} from '@citronhud/contracts'
+import { LocalServer } from './server'
+import { ObsController } from './obs'
+import { CaptureManager } from './capture'
+import { SyncService } from './sync'
+import { prepareClip, pruneClips } from './clips'
+import { enqueue, closeDb, loadRoster } from './db'
+import { getClientSettings, getHudConfig, updateClientSettings, updateHudConfig } from './settings'
+import { getMatch, resetMatch, setSideMode, setTeamSlot, swapTeamSlots, updateMatch } from './match'
+import { findSteamPath, installGsiConfig, isGsiInstalled } from './steam'
+import { setupAppUpdater, syncOverlayBundle } from './updater'
+
+/**
+ * Orchestrateur du client.
+ *
+ * Il ne contient aucune logique métier : tout le calcul vit dans
+ * `@citronhud/gsi`. Ce fichier ne fait que brancher les morceaux ensemble et
+ * décider QUAND les choses arrivent — notamment la seule décision éditoriale du
+ * client : à quel moment un replay peut passer à l'antenne.
+ */
+
+/** Sans trame pendant ce délai, on considère CS2 fermé ou en pause. */
+const GSI_STALE_MS = 6000
+
+let window: BrowserWindow | null = null
+let server: LocalServer
+let obs: ObsController
+let capture: CaptureManager
+let sync: SyncService
+let engine: CitronEngine
+
+/** Session de diffusion — regroupe les temps forts dans l'admin. */
+const sessionId = randomUUID()
+
+let lastFrameAt = 0
+let staleTimer: ReturnType<typeof setInterval> | null = null
+
+/* --------------------------------------------------------------------------
+ * État de connexion, poussé au panneau
+ * -------------------------------------------------------------------------- */
+
+const status: ConnectionStatus = {
+  gsi: 'waiting',
+  server: 'local',
+  obs: 'disabled',
+  overlay: { connected: 0, url: '' },
+  capture: 'off',
+  lastSyncAt: null,
+  lastGsiAt: null
+}
+
+function pushStatus(patch: Partial<ConnectionStatus> = {}): void {
+  Object.assign(status, patch)
+  window?.webContents.send('status', status)
+}
+
+/* --------------------------------------------------------------------------
+ * Orchestration des replays
+ * -------------------------------------------------------------------------- */
+
+/** Empêche deux replays de s'enchaîner et de faire rater la manche suivante. */
+let lastReplayAt = 0
+let replayInFlight = false
+/** Temps forts capturés en attente d'une fenêtre de diffusion. */
+const replayQueue: Array<{ highlight: Highlight; clipUrl: string; durationMs: number }> = []
+
+function canPlayNow(state: HudState | null): boolean {
+  const config = getHudConfig()
+  if (!config.autoPlayReplays || replayInFlight) return false
+  if (Date.now() - lastReplayAt < config.replayCooldownMs) return false
+  if (!config.replayOnlyBetweenRounds) return true
+  // Entre deux manches uniquement : couvrir une manche en cours avec un replay
+  // fait manquer l'action en direct, ce qui est pire que de ne rien montrer.
+  return state?.phase === 'freezetime' || state?.phase === 'over'
+}
+
+function drainReplayQueue(state: HudState | null): void {
+  if (replayQueue.length === 0 || !canPlayNow(state)) return
+  const next = replayQueue.shift()!
+  replayInFlight = true
+  lastReplayAt = Date.now()
+  server.playReplay(next.highlight, next.clipUrl, next.durationMs)
+  server.burstZest('center', 1.4)
+}
+
+/**
+ * Traite un temps fort détecté : capture, découpe, mise en file.
+ *
+ * Toujours journalisé même sans capture disponible — les records et
+ * l'historique de l'admin ne dépendent pas de la vidéo.
+ */
+async function handleHighlight(seed: Highlight): Promise<void> {
+  server.broadcastHighlight(seed)
+  enqueue('highlight', seed)
+
+  const config = getHudConfig()
+  if (!config.replayKinds.includes(seed.kind)) return
+
+  const raw = await capture.capture(seed)
+  if (!raw) return
+
+  const settings = getClientSettings()
+  const clip = await prepareClip(raw.path, seed, settings.capture.trimToWindow)
+  if (!clip) return
+
+  pruneClips(settings.capture.keepLocalClips)
+  replayQueue.push({
+    highlight: seed,
+    clipUrl: `${server.address}${clip.url}`,
+    durationMs: clip.durationMs
+  })
+}
+
+/* --------------------------------------------------------------------------
+ * Boucle GSI
+ * -------------------------------------------------------------------------- */
+
+function handleGsiFrame(payload: unknown): void {
+  lastFrameAt = Date.now()
+  if (status.gsi !== 'live') {
+    pushStatus({ gsi: 'live', lastGsiAt: new Date().toISOString() })
+  }
+
+  const tick = engine.ingest(payload as never)
+
+  server.broadcastState(tick.state)
+  server.broadcastKills(tick.kills)
+
+  for (const record of tick.records) {
+    server.broadcastRecord(record)
+    enqueue('record', record)
+  }
+
+  /*
+   * Les temps forts remontés par le moteur sont des « graines » : il leur
+   * manque l'identifiant de session et le clip. On complète ici, où ces
+   * informations existent, plutôt que de faire connaître la session au moteur.
+   */
+  for (const seed of tick.highlights) {
+    const highlight = {
+      ...seed,
+      id: randomUUID(),
+      sessionId,
+      matchId: getMatch().id,
+      occurredAt: new Date().toISOString(),
+      clip: { status: 'requested', source: null, localPath: null, remoteUrl: null, durationMs: null }
+    } as unknown as Highlight
+    void handleHighlight(highlight)
+  }
+
+  drainReplayQueue(tick.state)
+
+  // Le panneau affiche les mêmes données que l'overlay : une seule source.
+  window?.webContents.send('state', tick.state)
+}
+
+/** Bascule en « hors ligne » quand CS2 cesse d'émettre. */
+function watchStaleness(): void {
+  staleTimer = setInterval(() => {
+    if (status.gsi !== 'live') return
+    if (Date.now() - lastFrameAt < GSI_STALE_MS) return
+
+    pushStatus({ gsi: 'stale' })
+    const stale = engine.markStale()
+    if (stale) {
+      server.broadcastState(stale)
+      window?.webContents.send('state', stale)
+    }
+  }, 2000)
+}
+
+/* --------------------------------------------------------------------------
+ * Démarrage
+ * -------------------------------------------------------------------------- */
+
+function createWindow(): void {
+  window = new BrowserWindow({
+    width: 1180,
+    height: 780,
+    minWidth: 960,
+    minHeight: 640,
+    show: false,
+    autoHideMenuBar: true,
+    backgroundColor: '#12100A',
+    title: 'CitronHUD',
+    webPreferences: {
+      preload: join(__dirname, '../preload/index.js'),
+      sandbox: false
+    }
+  })
+
+  // Affichage différé : une fenêtre qui apparaît blanche puis se peint donne
+  // une impression de lenteur au lancement.
+  window.on('ready-to-show', () => window?.show())
+  window.on('closed', () => {
+    window = null
+  })
+
+  window.webContents.setWindowOpenHandler(({ url }) => {
+    void shell.openExternal(url)
+    return { action: 'deny' }
+  })
+
+  const rendererUrl = process.env.ELECTRON_RENDERER_URL
+  if (is.dev && rendererUrl) void window.loadURL(rendererUrl)
+  else void window.loadFile(join(__dirname, '../renderer/index.html'))
+}
+
+async function bootstrap(): Promise<void> {
+  const settings = getClientSettings()
+  const config = getHudConfig()
+
+  engine = new CitronEngine(config, getMatch().sides)
+  engine.setMatch(getMatch())
+  engine.setRoster(loadRoster())
+
+  server = new LocalServer({
+    onGsiFrame: handleGsiFrame,
+    onClientsChanged: ({ overlay }) =>
+      pushStatus({ overlay: { connected: overlay, url: server.overlayUrl } }),
+    onReplayEnded: () => {
+      replayInFlight = false
+      server.stopReplay('ended')
+    },
+    onZestRequested: (origin) => server.burstZest(origin, 1.2)
+  })
+
+  await server.start(settings.hudPort)
+  server.broadcastConfig(config)
+  pushStatus({ overlay: { connected: 0, url: server.overlayUrl } })
+
+  obs = new ObsController(settings.obs, {
+    onStatus: (state, detail) => {
+      pushStatus({ obs: state })
+      if (detail) window?.webContents.send('notice', detail)
+      if (state === 'connected') void obs.ensureBrowserSource(server.overlayUrl)
+      void capture.evaluate()
+    },
+    onReplaySaved: (path) => capture.handleObsReplaySaved(path)
+  })
+
+  capture = new CaptureManager(obs, settings.capture, {
+    onModeChanged: (mode) => pushStatus({ capture: mode })
+  })
+
+  sync = new SyncService({
+    onStatus: (state, detail) => {
+      pushStatus({ server: state, lastSyncAt: new Date().toISOString() })
+      if (detail && state === 'unauthorized') window?.webContents.send('notice', detail)
+    },
+    onRosterChanged: (roster) => engine.setRoster(roster)
+  })
+
+  sync.primeFromCache()
+  sync.start()
+
+  void obs.connect()
+  void capture.evaluate()
+
+  // Installation du GSI au premier lancement, sans rien demander.
+  if (!isGsiInstalled(settings.hudPort, settings.steamPath)) {
+    const result = installGsiConfig(settings.hudPort, settings.steamPath)
+    updateClientSettings({ gsiInstalled: result.ok, steamPath: settings.steamPath ?? findSteamPath() })
+    window?.webContents.send('notice', result.message)
+  }
+
+  setupAppUpdater({
+    onStatus: (message) => window?.webContents.send('notice', message),
+    onOverlayUpdated: () => server.reloadOverlays()
+  })
+
+  void syncOverlayBundle(app.getVersion(), {
+    onStatus: (message) => window?.webContents.send('notice', message),
+    onOverlayUpdated: () => server.reloadOverlays()
+  })
+
+  watchStaleness()
+}
+
+/* --------------------------------------------------------------------------
+ * IPC — le panneau de contrôle
+ * -------------------------------------------------------------------------- */
+
+function registerIpc(): void {
+  ipcMain.handle('status:get', () => status)
+  ipcMain.handle('settings:get', () => getClientSettings())
+  ipcMain.handle('config:get', () => getHudConfig())
+  ipcMain.handle('match:get', () => getMatch())
+  ipcMain.handle('roster:get', () => {
+    const { teams, players } = loadRoster()
+    return { teams: [...teams.values()], players: [...players.values()] }
+  })
+
+  ipcMain.handle('settings:update', async (_event, patch: Partial<ClientSettings>) => {
+    const next = updateClientSettings(patch)
+    obs.updateSettings(next.obs)
+    capture.updateSettings(next.capture)
+    if (patch.serverUrl !== undefined || patch.apiKey !== undefined) sync.start()
+    return next
+  })
+
+  ipcMain.handle('config:update', (_event, patch: Partial<HudConfig>) => {
+    const next = updateHudConfig(patch)
+    engine.setConfig(next)
+    server.broadcastConfig(next)
+    return next
+  })
+
+  ipcMain.handle('match:setTeam', (_event, slot: Slot, team: TeamSlot) => {
+    const next = setTeamSlot(slot, team)
+    engine.setMatch(next)
+    return next
+  })
+
+  ipcMain.handle('match:swapTeams', () => {
+    const next = swapTeamSlots()
+    engine.setMatch(next)
+    return next
+  })
+
+  /**
+   * Inversion des camps — le bouton de secours.
+   *
+   * Sert quand des SteamID manquent au roster et que la détection automatique
+   * se trompe. Passe en mode manuel : sinon la trame suivante annulerait
+   * immédiatement la correction de l'opérateur.
+   */
+  ipcMain.handle('match:swapSides', () => {
+    const sides = engine.swapSides()
+    const next = setSideMode('manual', sides.leftSide)
+    engine.setMatch(next)
+    return next
+  })
+
+  ipcMain.handle('match:setSideMode', (_event, mode: 'auto' | 'manual', leftSide?: Side) => {
+    engine.setSideMode(mode, leftSide)
+    const next = setSideMode(mode, leftSide)
+    engine.setMatch(next)
+    return next
+  })
+
+  ipcMain.handle('match:update', (_event, patch) => {
+    const next = updateMatch(patch)
+    engine.setMatch(next)
+    return next
+  })
+
+  ipcMain.handle('match:reset', (_event, keepTeams: boolean) => {
+    const next = resetMatch(keepTeams)
+    engine.setMatch(next)
+    return next
+  })
+
+  ipcMain.handle('overlay:url', () => server.overlayUrl)
+  ipcMain.handle('overlay:copyUrl', () => {
+    clipboard.writeText(server.overlayUrl)
+    return server.overlayUrl
+  })
+  ipcMain.handle('overlay:reload', () => server.reloadOverlays())
+
+  ipcMain.handle('obs:reconnect', async () => {
+    await obs.connect()
+    return obs.currentStatus
+  })
+  ipcMain.handle('obs:createSource', async () => {
+    await obs.ensureBrowserSource(server.overlayUrl)
+    return true
+  })
+
+  ipcMain.handle('gsi:install', () => {
+    const settings = getClientSettings()
+    const result = installGsiConfig(settings.hudPort, settings.steamPath)
+    updateClientSettings({ gsiInstalled: result.ok })
+    return result
+  })
+
+  ipcMain.handle('dialog:selectDirectory', async () => {
+    const focusedWindow = BrowserWindow.getFocusedWindow() ?? window
+    if (!focusedWindow) return null
+    const result = await dialog.showOpenDialog(focusedWindow, {
+      title: "Sélectionner le dossier d'installation de Steam ou de CS2",
+      properties: ['openDirectory']
+    })
+    if (result.canceled || result.filePaths.length === 0) return null
+    return result.filePaths[0]
+  })
+
+  ipcMain.handle('server:test', (_event, url: string, apiKey: string) =>
+    sync.testConnection(url, apiKey)
+  )
+  ipcMain.handle('server:syncNow', async () => {
+    await sync.runOnce()
+    return status
+  })
+
+  ipcMain.handle('zest:burst', (_event, origin: 'left' | 'right' | 'center') => {
+    server.burstZest(origin, 1.2)
+  })
+
+  /** Coupe un replay en cours — bouton de secours de la régie. */
+  ipcMain.handle('replay:cancel', () => {
+    replayInFlight = false
+    server.stopReplay('cancelled')
+  })
+}
+
+/* --------------------------------------------------------------------------
+ * Cycle de vie
+ * -------------------------------------------------------------------------- */
+
+// Une seule instance : deux clients écoutant le même port produiraient un HUD
+// qui alterne entre deux états sans que personne ne comprenne pourquoi.
+if (!app.requestSingleInstanceLock()) {
+  app.quit()
+} else {
+  app.on('second-instance', () => {
+    if (!window) return
+    if (window.isMinimized()) window.restore()
+    window.focus()
+  })
+
+  void app.whenReady().then(async () => {
+    electronApp.setAppUserModelId('gg.citron.hud')
+    app.on('browser-window-created', (_event, created) => optimizer.watchWindowShortcuts(created))
+
+    registerIpc()
+    createWindow()
+
+    try {
+      await bootstrap()
+    } catch (error) {
+      console.error('[main] Démarrage incomplet :', error)
+      window?.webContents.send('notice', `Démarrage incomplet : ${(error as Error).message}`)
+    }
+
+    app.on('activate', () => {
+      if (BrowserWindow.getAllWindows().length === 0) createWindow()
+    })
+  })
+
+  app.on('window-all-closed', () => {
+    if (process.platform !== 'darwin') app.quit()
+  })
+
+  app.on('before-quit', () => {
+    if (staleTimer) clearInterval(staleTimer)
+    sync?.stop()
+    capture?.dispose()
+    void obs?.disconnect()
+    void server?.stop()
+    closeDb()
+  })
+}

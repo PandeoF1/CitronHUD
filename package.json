@@ -1,0 +1,33 @@
+{
+  "name": "citronhud",
+  "version": "0.1.0",
+  "private": true,
+  "description": "CitronHUD — HUD CS2 plug-n-play pour Citron Esport (client Electron + serveur d'administration).",
+  "packageManager": "pnpm@10.33.1",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev",
+    "typecheck": "turbo run typecheck",
+    "lint": "turbo run lint",
+    "test": "turbo run test",
+    "format": "prettier --write \"**/*.{ts,tsx,js,json,css,md,yml,yaml}\" --ignore-path .prettierignore",
+    "format:check": "prettier --check \"**/*.{ts,tsx,js,json,css,md,yml,yaml}\" --ignore-path .prettierignore",
+    "dev:server": "pnpm --filter @citronhud/server dev",
+    "dev:client": "pnpm --filter @citronhud/client dev",
+    "dev:overlay": "pnpm --filter @citronhud/overlay dev",
+    "db:generate": "pnpm --filter @citronhud/server db:generate",
+    "db:migrate": "pnpm --filter @citronhud/server db:migrate",
+    "db:studio": "pnpm --filter @citronhud/server db:studio",
+    "db:seed": "pnpm --filter @citronhud/server db:seed"
+  },
+  "devDependencies": {
+    "@types/node": "^22.15.3",
+    "prettier": "^3.5.3",
+    "turbo": "^2.5.0",
+    "typescript": "^5.8.3",
+    "vitest": "^3.2.4"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "name": "@citronhud/contracts",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Schémas Zod et types partagés entre le client Electron, l'overlay et le serveur.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --passWithNoTests",
+    "build": "echo \"@citronhud/contracts est consommé en source\" && exit 0"
+  },
+  "dependencies": {
+    "zod": "^4.4.3"
+  }
+}

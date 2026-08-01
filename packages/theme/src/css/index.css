@@ -1,0 +1,11 @@
+/*
+ * Point d'entrée du design system « Zeste ».
+ *
+ * Import unique côté consommateur :  @import '@citronhud/theme/css';
+ * L'ordre compte : les tokens doivent exister avant que primitives et motion
+ * ne les référencent.
+ */
+@import './tokens.css';
+@import './fonts.css';
+@import './primitives.css';
+@import './motion.css';

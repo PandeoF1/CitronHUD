@@ -1,0 +1,57 @@
+/*
+ * Polices — auto-hébergées via Fontsource.
+ *
+ * Rien n'est chargé depuis un CDN : l'overlay doit démarrer sans réseau, et une
+ * police qui n'arrive pas pendant un live est un incident de diffusion.
+ *
+ * Archivo est variable sur deux axes (wght 100-900, wdth 62%-125%). Une seule
+ * famille couvre donc le score très large et les noms de joueurs condensés, ce
+ * qui garde le HUD cohérent là où deux familles non liées jureraient.
+ * Chivo Mono vient de la même fonderie (Omnibus-Type) et porte les chiffres.
+ */
+@import '@fontsource-variable/archivo/wdth.css';
+@import '@fontsource-variable/chivo-mono/index.css';
+
+/*
+ * L'overlay est chargé une fois avant le passage à l'antenne, jamais pendant.
+ * `block` évite donc un reflow visible en direct : mieux vaut 100 ms de vide au
+ * chargement qu'un saut de mise en page devant les spectateurs.
+ */
+@font-face {
+  font-family: 'Archivo Variable';
+  font-display: block;
+}
+
+/* ---- Utilitaires de largeur (axe wdth d'Archivo) ---- */
+.wdth-expanded {
+  font-stretch: 112%;
+}
+.wdth-normal {
+  font-stretch: 100%;
+}
+.wdth-condensed {
+  font-stretch: 84%;
+}
+.wdth-narrow {
+  font-stretch: 70%;
+}
+
+/*
+ * Chiffres tabulaires — obligatoires partout où une valeur change en direct
+ * (HP, argent, chrono, score). Sans cela, chaque tick fait danser la mise en
+ * page de quelques pixels, ce qui est très visible sur un flux vidéo.
+ */
+.tnum {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: 'tnum' 1;
+}
+
+.eyebrow {
+  font-family: var(--font-body);
+  font-size: var(--hud-eyebrow-size);
+  font-weight: var(--hud-eyebrow-weight);
+  letter-spacing: var(--hud-eyebrow-tracking);
+  font-stretch: 100%;
+  text-transform: uppercase;
+  color: var(--ink-pulp);
+}

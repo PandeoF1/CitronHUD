@@ -1,0 +1,996 @@
+@import '@citronhud/theme/css';
+
+/*
+ * Mise en page de l'overlay.
+ *
+ * Le HUD est dessiné sur un canevas FIXE de 1920×1080 puis mis à l'échelle par
+ * transform. Aucune requête média, aucune unité relative : une source navigateur
+ * OBS a une taille connue et arbitraire, et un layout qui « s'adapte » y produit
+ * des décalages d'un pixel entre deux résolutions. Un canevas fixe garantit que
+ * ce que l'opérateur cale en 1080p est exactement ce qui sort en 1440p.
+ */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html,
+body {
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  /* Indispensable : OBS compose l'overlay sur la vidéo du jeu. */
+  background: transparent;
+}
+
+#root {
+  width: 100%;
+  height: 100%;
+}
+
+.stage {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 1920px;
+  height: 1080px;
+  transform-origin: top left;
+  font-family: var(--font-body);
+  color: var(--ink-pith);
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
+
+/* Masque tout le HUD sans démonter le composant : l'état reste à jour et
+   l'overlay réapparaît instantanément, sans reconstruction. */
+.stage[data-hidden='true'] {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+ * MATCHBAR — le quartier de citron, en haut au centre
+ * ========================================================================== */
+
+.matchbar {
+  position: absolute;
+  top: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: 300px auto 300px;
+  align-items: stretch;
+  height: 88px;
+  --edge-w: 0px;
+  --face: var(--scrim-firm);
+}
+
+/* L'arête zeste ne court que sur le bas : elle souligne la coupe du quartier
+   sans encadrer un élément déjà posé contre le bord de l'écran. */
+.matchbar::after {
+  content: '';
+  position: absolute;
+  left: 26px;
+  right: 26px;
+  bottom: 0;
+  height: 2px;
+  background: var(--brand-rind);
+  z-index: 2;
+}
+
+.matchbar__team {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-5);
+  min-width: 0;
+}
+
+.matchbar__team--left {
+  justify-content: flex-end;
+  text-align: right;
+}
+
+.matchbar__team--right {
+  justify-content: flex-start;
+  flex-direction: row-reverse;
+  text-align: left;
+}
+
+.matchbar__logo {
+  width: 46px;
+  height: 46px;
+  object-fit: contain;
+  flex-shrink: 0;
+}
+
+.matchbar__logo--empty {
+  display: grid;
+  place-items: center;
+  background: var(--surface-husk);
+  color: var(--ink-rind-dim);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.matchbar__identity {
+  min-width: 0;
+}
+
+.matchbar__name {
+  font-size: var(--hud-team-name-size);
+  font-weight: var(--hud-team-name-weight);
+  font-stretch: 92%;
+  letter-spacing: var(--hud-team-name-tracking);
+  text-transform: uppercase;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  line-height: 1.05;
+}
+
+.matchbar__meta {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-pulp);
+}
+
+.matchbar__team--right .matchbar__meta {
+  flex-direction: row-reverse;
+}
+
+/* Pastille de camp : le seul endroit où la couleur d'équipe est affirmée. */
+.matchbar__side {
+  padding: 1px 6px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.1em;
+  color: var(--ink-on-rind);
+  background: var(--team-color);
+}
+
+.matchbar__center {
+  display: grid;
+  grid-template-columns: auto 18px auto;
+  align-items: center;
+  gap: var(--space-4);
+  padding: 0 var(--space-5);
+}
+
+.matchbar__score {
+  font-size: var(--hud-score-size);
+  font-weight: var(--hud-score-weight);
+  font-stretch: 112%;
+  letter-spacing: var(--hud-score-tracking);
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-white);
+  min-width: 74px;
+}
+
+.matchbar__score--left {
+  text-align: right;
+}
+.matchbar__score--right {
+  text-align: left;
+}
+
+/* Balle de match : le score prend la couleur de marque, sans halo ni pulsation.
+   L'information est déjà rare, elle n'a pas besoin d'être criée. */
+.matchbar__score[data-match-point='true'] {
+  color: var(--brand-rind);
+}
+
+/* ==========================================================================
+ * CHRONO — sous la matchbar, dans le prolongement du quartier
+ * ========================================================================== */
+
+.timer {
+  position: absolute;
+  top: 88px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 6px 26px 8px;
+  --c-br: var(--chamfer-md);
+  --c-bl: var(--chamfer-md);
+  --face: var(--scrim-firm);
+}
+
+.timer__value {
+  font-family: var(--font-mono);
+  font-size: var(--hud-timer-size);
+  font-weight: var(--hud-timer-weight);
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-white);
+}
+
+.timer__label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-pulp);
+}
+
+/* Bombe posée : le chrono passe en rouge. C'est le seul moment où le HUD
+   change de couleur de fond — la rareté fait l'impact. */
+.timer[data-bomb='true'] {
+  --face: rgba(60, 8, 5, 0.9);
+}
+.timer[data-bomb='true'] .timer__value {
+  color: var(--sem-bomb);
+}
+
+/* Désamorçage voué à l'échec : l'information la plus tendue du jeu. */
+.timer[data-too-late='true'] .timer__label {
+  color: var(--sem-blood);
+}
+
+/* ==========================================================================
+ * FRISE DE MANCHES
+ * ========================================================================== */
+
+.rounds {
+  position: absolute;
+  top: 6px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 2px;
+  z-index: 1;
+}
+
+.rounds__tick {
+  width: 4px;
+  height: 4px;
+  background: var(--surface-shell);
+}
+
+.rounds__tick[data-winner='left'] {
+  background: var(--left-color);
+}
+.rounds__tick[data-winner='right'] {
+  background: var(--right-color);
+}
+
+/* ==========================================================================
+ * LISTES JOUEURS — bords gauche et droit
+ * ========================================================================== */
+
+.roster {
+  position: absolute;
+  top: 190px;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  width: 292px;
+}
+
+.roster--left {
+  left: 0;
+}
+.roster--right {
+  right: 0;
+}
+
+.player {
+  position: relative;
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: var(--space-3);
+  height: 54px;
+  padding: 0 var(--space-4);
+  --face: var(--scrim-firm);
+  --edge-w: 0px;
+  transition: opacity var(--dur-swap) var(--ease-out);
+}
+
+.roster--left .player {
+  --c-tr: var(--chamfer-sm);
+  --c-br: var(--chamfer-sm);
+}
+.roster--right .player {
+  --c-tl: var(--chamfer-sm);
+  --c-bl: var(--chamfer-sm);
+  grid-template-columns: auto 1fr 44px;
+}
+
+/* Le joueur observé porte l'arête zeste — c'est ce qui relie la liste au
+   panneau du bas et évite au spectateur de chercher qui il regarde. */
+.player[data-observed='true'] {
+  --edge-w: var(--edge-regular);
+  --edge-color: var(--brand-rind);
+  --face: var(--surface-flesh);
+}
+
+/* Un mort est estompé, pas masqué : sa présence dans la liste dit qu'il
+   existe, son opacité dit qu'il ne joue plus. */
+.player[data-alive='false'] {
+  opacity: 0.34;
+}
+
+.player__avatar {
+  position: relative;
+  width: 44px;
+  height: 44px;
+  overflow: hidden;
+  background: var(--surface-husk);
+  --c-tl: var(--chamfer-xs);
+  --c-br: var(--chamfer-xs);
+}
+
+.player__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.player__initials {
+  display: grid;
+  place-items: center;
+  width: 100%;
+  height: 100%;
+  font-size: 16px;
+  font-weight: 800;
+  font-stretch: 84%;
+  color: var(--ink-rind-dim);
+}
+
+.player__slot {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  padding: 0 3px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.3;
+  color: var(--ink-on-rind);
+  background: var(--team-color);
+}
+
+.player__body {
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.roster--right .player__body {
+  text-align: right;
+  align-items: flex-end;
+}
+
+.player__nameline {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+.roster--right .player__nameline {
+  flex-direction: row-reverse;
+}
+
+.player__name {
+  font-size: var(--hud-player-name-size);
+  font-weight: var(--hud-player-name-weight);
+  font-stretch: 84%;
+  letter-spacing: var(--hud-player-name-tracking);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+}
+
+.player__hp {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+  color: var(--hp-color);
+  flex-shrink: 0;
+}
+
+.player__stats {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  color: var(--ink-pulp);
+  font-variant-numeric: tabular-nums;
+}
+
+.player__money {
+  color: var(--sem-leaf);
+}
+
+.player__equipment {
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  justify-self: end;
+}
+
+.roster--right .player__equipment {
+  justify-self: start;
+  flex-direction: row-reverse;
+}
+
+.player__nade {
+  width: 7px;
+  height: 11px;
+  border-radius: 3px 3px 2px 2px;
+}
+
+.player__kit {
+  width: 12px;
+  height: 9px;
+  background: var(--sem-defuse);
+}
+
+/* Barre de vie collée au bord extérieur : elle longe le cadre de l'écran, donc
+   elle ne concurrence jamais le texte pour l'attention. */
+.player__hpbar {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 3px;
+  background: var(--surface-shell);
+  overflow: hidden;
+}
+
+.roster--left .player__hpbar {
+  left: 0;
+}
+.roster--right .player__hpbar {
+  right: 0;
+}
+
+.player__hpbar span {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: var(--hp-pct);
+  background: var(--hp-color);
+  transition: height var(--dur-tick) linear;
+}
+
+/* ==========================================================================
+ * PANNEAU DU JOUEUR OBSERVÉ — bas centre
+ * ========================================================================== */
+
+.observed {
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  transform: translateX(-50%);
+  display: grid;
+  grid-template-columns: 64px auto 1fr auto;
+  align-items: center;
+  gap: var(--space-5);
+  width: 760px;
+  height: 96px;
+  padding: 0 var(--space-6);
+  --c-tl: var(--chamfer-lg);
+  --c-tr: var(--chamfer-lg);
+  --face: var(--scrim-firm);
+  --edge-w: var(--edge-regular);
+  --edge-color: var(--brand-rind);
+}
+
+.observed__avatar {
+  width: 64px;
+  height: 64px;
+  overflow: hidden;
+  background: var(--surface-husk);
+  --c-tl: var(--chamfer-sm);
+  --c-br: var(--chamfer-sm);
+}
+
+.observed__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.observed__identity {
+  min-width: 0;
+}
+
+.observed__name {
+  font-size: var(--hud-observed-name-size);
+  font-weight: var(--hud-observed-name-weight);
+  font-stretch: 90%;
+  line-height: 1.05;
+  white-space: nowrap;
+}
+
+.observed__real {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--ink-pulp);
+  white-space: nowrap;
+}
+
+.observed__center {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-6);
+}
+
+.observed__vitals {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-4);
+}
+
+.observed__hp {
+  font-family: var(--font-mono);
+  font-size: 34px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+  color: var(--hp-color);
+}
+
+.observed__armor {
+  font-family: var(--font-mono);
+  font-size: 16px;
+  color: var(--ink-pulp);
+  font-variant-numeric: tabular-nums;
+}
+
+.observed__weapon {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+}
+
+.observed__weapon-name {
+  font-size: 13px;
+  font-weight: 700;
+  font-stretch: 84%;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.observed__ammo {
+  font-family: var(--font-mono);
+  font-size: 15px;
+  font-variant-numeric: tabular-nums;
+  color: var(--ink-pulp);
+}
+
+.observed__ammo b {
+  color: var(--ink-pith);
+  font-weight: 700;
+}
+
+.observed__stats {
+  display: flex;
+  gap: var(--space-5);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1px;
+  min-width: 34px;
+}
+
+.stat__value {
+  font-family: var(--font-mono);
+  font-size: 18px;
+  font-weight: 700;
+  line-height: 1;
+  font-variant-numeric: tabular-nums;
+}
+
+.stat__label {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-pulp);
+}
+
+/* ==========================================================================
+ * KILLFEED — haut droite
+ * ========================================================================== */
+
+.killfeed {
+  position: absolute;
+  top: 120px;
+  right: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  width: 340px;
+}
+
+.kill {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 4px var(--space-4);
+  --c-tr: var(--chamfer-xs);
+  --c-bl: var(--chamfer-xs);
+  --face: var(--scrim-firm);
+  font-size: 13px;
+  font-weight: 600;
+  font-stretch: 84%;
+  animation: slide-from-right 180ms var(--ease-out) both;
+}
+
+.kill__name {
+  white-space: nowrap;
+}
+
+.kill__name--killer {
+  color: var(--kill-color);
+}
+.kill__name--victim {
+  color: var(--ink-pulp);
+}
+
+.kill__weapon {
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-pith);
+}
+
+.kill__hs {
+  color: var(--brand-rind);
+  font-size: 12px;
+}
+
+.kill[data-teamkill='true'] .kill__weapon {
+  color: var(--sem-blood);
+}
+
+/* ==========================================================================
+ * RADAR — bas gauche
+ * ========================================================================== */
+
+.radar {
+  position: absolute;
+  bottom: 24px;
+  left: 24px;
+  --c-tr: var(--chamfer-md);
+  --c-bl: var(--chamfer-md);
+  --face: var(--scrim-firm);
+  --edge-w: var(--edge-hair);
+  --edge-color: var(--surface-shell);
+  overflow: hidden;
+}
+
+.radar__canvas {
+  display: block;
+}
+
+.radar__fallback {
+  display: grid;
+  place-items: center;
+  gap: var(--space-3);
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--ink-rind-dim);
+}
+
+.radar__fallback strong {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--ink-pulp);
+}
+
+.radar__fallback span {
+  font-size: 11px;
+  max-width: 180px;
+  line-height: 1.4;
+}
+
+/* ==========================================================================
+ * SÉRIE (BO3/BO5) — sous le chrono
+ * ========================================================================== */
+
+.series {
+  position: absolute;
+  top: 152px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 3px;
+}
+
+.series__map {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: 3px var(--space-4);
+  --c-tr: var(--chamfer-xs);
+  --c-bl: var(--chamfer-xs);
+  --face: var(--scrim-soft);
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-pulp);
+}
+
+.series__map[data-played='true'] {
+  --face: var(--scrim-firm);
+  color: var(--ink-pith);
+}
+
+.series__score {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ==========================================================================
+ * ÉVÈNEMENT / TOURNOI — coin haut gauche
+ * ========================================================================== */
+
+.event {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: var(--space-3) var(--space-6) var(--space-3) var(--space-5);
+  --c-br: var(--chamfer-md);
+  --face: var(--scrim-firm);
+}
+
+.event__name {
+  font-size: 14px;
+  font-weight: 700;
+  font-stretch: 90%;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.event__stage {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-rind);
+}
+
+/* ==========================================================================
+ * BANDEAU DE RECORD — bas droite
+ * ========================================================================== */
+
+.records {
+  position: absolute;
+  right: 24px;
+  bottom: 140px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--space-3);
+}
+
+.record {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-5);
+  --c-tr: var(--chamfer-md);
+  --c-bl: var(--chamfer-md);
+  --face: var(--surface-flesh);
+  --edge-w: var(--edge-regular);
+  --edge-color: var(--brand-rind);
+  animation: record-in var(--dur-toast) var(--ease-squeeze) both;
+}
+
+.record__avatar {
+  width: 42px;
+  height: 42px;
+  object-fit: cover;
+  --c-tl: var(--chamfer-xs);
+  --c-br: var(--chamfer-xs);
+}
+
+.record__label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-rind);
+}
+
+.record__title {
+  font-size: 15px;
+  font-weight: 700;
+  font-stretch: 90%;
+  white-space: nowrap;
+}
+
+.record__value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-3);
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+}
+
+.record__value b {
+  font-size: 24px;
+  font-weight: 700;
+  color: var(--ink-white);
+}
+
+.record__previous {
+  font-size: 12px;
+  color: var(--ink-rind-dim);
+  text-decoration: line-through;
+}
+
+/* ==========================================================================
+ * SCÈNE DE REPLAY — le moment signature
+ * ========================================================================== */
+
+.replay {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  background: var(--scrim-full);
+  animation: zest-flash 420ms var(--ease-out) both;
+}
+
+.replay__frame {
+  position: relative;
+  width: 1360px;
+  --c-tl: var(--chamfer-lg);
+  --c-br: var(--chamfer-lg);
+  --face: var(--surface-seed);
+  --edge-w: var(--edge-bold);
+  --edge-color: var(--brand-rind);
+  animation: squeeze-in var(--dur-squeeze) var(--ease-squeeze) both;
+  overflow: hidden;
+}
+
+.replay__frame[data-leaving='true'] {
+  animation: squeeze-out 380ms var(--ease-in) both;
+}
+
+.replay__video {
+  display: block;
+  width: 100%;
+  height: auto;
+}
+
+.replay__plate {
+  position: absolute;
+  top: 0;
+  left: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-7) var(--space-4) var(--space-5);
+  --c-br: var(--chamfer-lg);
+  --face: var(--brand-rind);
+  color: var(--ink-on-rind);
+  z-index: 2;
+}
+
+.replay__kind {
+  font-size: 26px;
+  font-weight: 800;
+  font-stretch: 112%;
+  letter-spacing: 0.04em;
+  line-height: 1;
+}
+
+.replay__player {
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  opacity: 0.78;
+}
+
+.replay__meta {
+  position: absolute;
+  right: var(--space-6);
+  bottom: var(--space-5);
+  display: flex;
+  gap: var(--space-5);
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--ink-pulp);
+  z-index: 2;
+}
+
+/* Le trait qui « coupe » l'écran juste avant l'ouverture. */
+.replay__slice {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 3px;
+  background: var(--brand-zest);
+  transform-origin: center;
+  animation: rind-slice 520ms var(--ease-out) both;
+  z-index: 3;
+}
+
+/* ==========================================================================
+ * CHAMP DE ZESTES — la « ptite emote citron »
+ * ========================================================================== */
+
+.zest-field {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+/* ==========================================================================
+ * ÉTAT D'ATTENTE — visible uniquement hors antenne
+ * ========================================================================== */
+
+.standby {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-7) var(--space-8);
+  --c-tl: var(--chamfer-lg);
+  --c-br: var(--chamfer-lg);
+  --face: var(--scrim-firm);
+  --edge-w: var(--edge-hair);
+  --edge-color: var(--surface-shell);
+  text-align: center;
+}
+
+.standby__mark {
+  font-size: 42px;
+  line-height: 1;
+}
+
+.standby__title {
+  font-size: 18px;
+  font-weight: 800;
+  font-stretch: 112%;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--brand-rind);
+}
+
+.standby__hint {
+  font-size: 13px;
+  color: var(--ink-pulp);
+  max-width: 280px;
+  line-height: 1.5;
+}

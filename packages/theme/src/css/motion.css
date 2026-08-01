@@ -1,0 +1,225 @@
+/*
+ * Mouvement.
+ *
+ * Règle du système : rien ne bouge en ambiance. Chaque animation ici est
+ * déclenchée par un changement d'état réel du match. Sur 40 minutes de
+ * diffusion, une animation en boucle fatigue le spectateur et vole l'attention
+ * au jeu — c'est la faute la plus courante des HUDs custom.
+ */
+
+/* --------------------------------------------------------------------------
+ * Le squeeze — transition de replay, moment signature
+ *
+ * Le cadre se comprime horizontalement comme un citron pressé, une arête zeste
+ * mène le mouvement, puis le replay se détend en place.
+ * -------------------------------------------------------------------------- */
+@keyframes squeeze-in {
+  0% {
+    transform: scaleX(0.02) scaleY(1.08);
+    filter: brightness(2.4) saturate(0);
+    opacity: 0;
+  }
+  38% {
+    transform: scaleX(1.04) scaleY(0.94);
+    filter: brightness(1.5) saturate(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(1) scaleY(1);
+    filter: brightness(1) saturate(1);
+    opacity: 1;
+  }
+}
+
+@keyframes squeeze-out {
+  0% {
+    transform: scaleX(1) scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleX(0.02) scaleY(1.12);
+    filter: brightness(2.2);
+    opacity: 0;
+  }
+}
+
+/* Le trait de lumière qui « coupe » l'écran avant l'ouverture du replay. */
+@keyframes rind-slice {
+  0% {
+    transform: scaleY(0);
+    opacity: 0;
+  }
+  22% {
+    transform: scaleY(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scaleY(1) scaleX(60);
+    opacity: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Gerbe de zestes — la « ptite emote citron »
+ *
+ * Les particules elles-mêmes sont dessinées sur un canvas (voir l'overlay) :
+ * animer 60 nœuds DOM ferait chuter le framerate de la source navigateur OBS.
+ * Ces keyframes ne servent qu'au flash d'accompagnement.
+ * -------------------------------------------------------------------------- */
+@keyframes zest-flash {
+  0% {
+    opacity: 0;
+    transform: scale(0.6);
+  }
+  15% {
+    opacity: 0.9;
+    transform: scale(1.02);
+  }
+  100% {
+    opacity: 0;
+    transform: scale(1.35);
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Le pépin — pulsation à la manche gagnée
+ * -------------------------------------------------------------------------- */
+@keyframes pip-win {
+  0% {
+    transform: scale(1);
+  }
+  30% {
+    transform: scale(1.5);
+    filter: drop-shadow(0 0 10px var(--brand-rind));
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * HP bas — pulsation lente et sobre. C'est la seule boucle tolérée, parce
+ * qu'elle signale un danger réel et disparaît dès que le joueur soigne.
+ * -------------------------------------------------------------------------- */
+@keyframes hp-critical {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.45;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Toast de record battu
+ * -------------------------------------------------------------------------- */
+@keyframes record-in {
+  0% {
+    transform: translateY(14px) scaleY(0.7);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0) scaleY(1);
+    opacity: 1;
+  }
+}
+
+@keyframes record-out {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-10px);
+    opacity: 0;
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Entrées / sorties génériques
+ * -------------------------------------------------------------------------- */
+@keyframes slide-from-left {
+  from {
+    transform: translateX(-24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes slide-from-right {
+  from {
+    transform: translateX(24px);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes drop-in {
+  from {
+    transform: translateY(-16px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Valeur qui change (kill, argent) : un bref éclat, pas un déplacement. */
+@keyframes value-bump {
+  0% {
+    color: var(--brand-zest);
+    transform: scale(1.18);
+  }
+  100% {
+    color: inherit;
+    transform: scale(1);
+  }
+}
+
+/* --------------------------------------------------------------------------
+ * Classes utilitaires
+ * -------------------------------------------------------------------------- */
+.anim-drop-in {
+  animation: drop-in var(--dur-panel) var(--ease-out) both;
+}
+.anim-from-left {
+  animation: slide-from-left var(--dur-panel) var(--ease-out) both;
+}
+.anim-from-right {
+  animation: slide-from-right var(--dur-panel) var(--ease-out) both;
+}
+.anim-value-bump {
+  animation: value-bump var(--dur-swap) var(--ease-out);
+}
+.anim-hp-critical {
+  animation: hp-critical 1.1s var(--ease-in-out) infinite;
+}
+.anim-pip-win {
+  animation: pip-win 640ms var(--ease-squeeze);
+}
+
+/* --------------------------------------------------------------------------
+ * Mouvement réduit
+ *
+ * Concerne surtout l'interface admin : l'overlay tourne dans OBS, où personne
+ * n'exprime cette préférence. On la respecte quand même — c'est le plancher de
+ * qualité, pas une option.
+ * -------------------------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

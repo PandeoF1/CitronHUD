@@ -1,0 +1,407 @@
+@import '@citronhud/theme/css';
+
+/*
+ * Panneau de contrôle.
+ *
+ * Il partage les tokens de l'overlay mais pas sa densité : ici on lit à 60 cm
+ * d'un écran, dans le calme d'avant-diffusion, pas du coin de l'œil pendant une
+ * action. La grammaire chanfreinée reste, appliquée avec plus de retenue.
+ */
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  height: 100%;
+}
+
+body {
+  background: var(--surface-char);
+  color: var(--ink-pith);
+  font-family: var(--font-body);
+  font-size: var(--ui-body-size);
+  -webkit-font-smoothing: antialiased;
+  /* Une application de bureau ne se sélectionne pas au glissement. */
+  user-select: none;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+/* ---- Barre supérieure ---- */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  padding: var(--space-4) var(--space-6);
+  background: var(--surface-flesh);
+  border-bottom: 1px solid var(--surface-shell);
+  /* La barre reste en place quand le contenu défile. */
+  flex: 0 0 auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+}
+.brand__mark {
+  font-size: 20px;
+}
+.brand__name {
+  font-weight: 800;
+  font-stretch: 112%;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--brand-rind);
+}
+
+.tabs {
+  display: flex;
+  gap: var(--space-2);
+  margin-right: auto;
+}
+
+.tab {
+  padding: var(--space-3) var(--space-5);
+  background: transparent;
+  border: 0;
+  color: var(--ink-pulp);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+}
+.tab[data-active='true'] {
+  color: var(--ink-pith);
+  border-bottom-color: var(--brand-rind);
+}
+
+/* ---- Bandeau d'état ---- */
+
+.strip {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 1px;
+  background: var(--surface-shell);
+  border-bottom: 1px solid var(--surface-shell);
+  flex: 0 0 auto;
+}
+
+.lamp {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-4) var(--space-5);
+  background: var(--surface-flesh);
+  font-size: var(--ui-small-size);
+}
+
+.lamp__dot {
+  width: 8px;
+  height: 8px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--ink-rind-dim);
+}
+.lamp[data-tone='ok'] .lamp__dot {
+  background: var(--sem-leaf);
+}
+.lamp[data-tone='warn'] .lamp__dot {
+  background: var(--sem-warn);
+}
+.lamp[data-tone='bad'] .lamp__dot {
+  background: var(--sem-blood);
+}
+
+.lamp__label {
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 10px;
+  color: var(--ink-pulp);
+}
+.lamp__value {
+  color: var(--ink-pith);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ---- Contenu ---- */
+
+.content {
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: var(--space-6);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+.card {
+  padding: var(--space-6);
+  background: var(--surface-flesh);
+  border: 1px solid var(--surface-shell);
+  /* Le chanfrein, en rappel discret : deux coins seulement. */
+  clip-path: polygon(
+    var(--chamfer-md) 0,
+    100% 0,
+    100% calc(100% - var(--chamfer-md)),
+    calc(100% - var(--chamfer-md)) 100%,
+    0 100%,
+    0 var(--chamfer-md)
+  );
+}
+
+.card__title {
+  margin: 0 0 var(--space-3);
+  font-size: var(--ui-h2-size);
+  font-weight: 700;
+}
+
+.card__hint {
+  margin: 0 0 var(--space-5);
+  color: var(--ink-pulp);
+  font-size: var(--ui-small-size);
+  line-height: 1.5;
+  max-width: 68ch;
+}
+
+/* ---- Équipes ---- */
+
+.teams {
+  display: grid;
+  grid-template-columns: 1fr auto 1fr;
+  gap: var(--space-5);
+  align-items: end;
+}
+
+.picker {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.picker__side {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--brand-rind);
+}
+
+.picker__modes {
+  display: flex;
+  gap: var(--space-2);
+}
+
+.picker__adhoc {
+  display: flex;
+  gap: var(--space-3);
+}
+
+.swap {
+  align-self: center;
+  font-size: 18px;
+  padding: var(--space-3) var(--space-4);
+}
+
+/* ---- Camps ---- */
+
+.sides {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: var(--space-5);
+  margin-bottom: var(--space-5);
+}
+
+.sides__readout {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.sides__label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-pulp);
+}
+
+.sides__value {
+  font-size: 20px;
+  font-weight: 700;
+  font-variant-numeric: tabular-nums;
+}
+.sides__value[data-side='CT'] {
+  color: var(--side-ct);
+}
+.sides__value[data-side='T'] {
+  color: var(--side-t);
+}
+
+.warn {
+  margin: 0 0 var(--space-5);
+  padding: var(--space-4) var(--space-5);
+  background: rgba(255, 176, 32, 0.1);
+  border-left: 3px solid var(--sem-warn);
+  color: var(--ink-pith);
+  font-size: var(--ui-small-size);
+  line-height: 1.5;
+}
+
+/* ---- Contrôles ---- */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space-3);
+}
+
+.btn {
+  padding: var(--space-3) var(--space-5);
+  background: var(--surface-husk);
+  border: 1px solid var(--surface-shell);
+  color: var(--ink-pith);
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background var(--dur-tick) var(--ease-out);
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-shell);
+}
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn--primary {
+  background: var(--brand-rind);
+  border-color: var(--brand-rind);
+  color: var(--ink-on-rind);
+  font-weight: 700;
+}
+.btn--primary:hover:not(:disabled) {
+  background: var(--brand-zest);
+}
+
+.btn--ghost {
+  background: transparent;
+}
+
+.chip {
+  padding: var(--space-2) var(--space-4);
+  background: transparent;
+  border: 1px solid var(--surface-shell);
+  color: var(--ink-pulp);
+  font: inherit;
+  font-size: var(--ui-small-size);
+  cursor: pointer;
+}
+.chip[data-active='true'] {
+  background: var(--brand-rind);
+  border-color: var(--brand-rind);
+  color: var(--ink-on-rind);
+  font-weight: 700;
+}
+.chip:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+/* ---- Formulaires ---- */
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  margin-bottom: var(--space-5);
+  max-width: 520px;
+}
+
+.field label {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-pulp);
+}
+
+.input {
+  padding: var(--space-3) var(--space-4);
+  background: var(--surface-char);
+  border: 1px solid var(--surface-shell);
+  color: var(--ink-pith);
+  font: inherit;
+  /* Les champs de saisie sont la seule zone où la sélection a un sens. */
+  user-select: text;
+}
+.input:focus-visible {
+  outline: 2px solid var(--brand-rind);
+  outline-offset: 1px;
+}
+.input--short {
+  width: 90px;
+  text-transform: uppercase;
+}
+
+.check {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  margin-top: var(--space-4);
+  font-size: var(--ui-small-size);
+  cursor: pointer;
+}
+
+.muted {
+  color: var(--ink-pulp);
+  font-size: var(--ui-small-size);
+}
+
+/* ---- Messages ---- */
+
+.notice {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  background: var(--surface-husk);
+  border-bottom: 1px solid var(--surface-shell);
+  font-size: var(--ui-small-size);
+  flex: 0 0 auto;
+}
+
+.notice__close {
+  margin-left: auto;
+  background: transparent;
+  border: 0;
+  color: var(--ink-pulp);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.boot {
+  display: grid;
+  place-content: center;
+  gap: var(--space-4);
+  height: 100%;
+  text-align: center;
+  color: var(--ink-pulp);
+}
+.boot__mark {
+  font-size: 40px;
+}

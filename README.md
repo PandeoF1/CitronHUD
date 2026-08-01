@@ -1,0 +1,105 @@
+# CitronHUD
+
+HUD CS2 plug-n-play pour **Citron Esport** — un client sans réglage pour le streamer, un serveur configurable avec interface admin pour l'orga.
+
+---
+
+## Le principe
+
+Le streamer installe un `.exe`, choisit deux équipes, et c'est tout. Aucune URL à copier, aucun fichier à créer, aucun mot de passe à saisir.
+
+Ce que le client fait tout seul au premier lancement :
+
+1. **localise Steam et CS2** — y compris sur une bibliothèque secondaire — et écrit le fichier Game State Integration ;
+2. **lit le mot de passe websocket d'OBS sur le disque**, se connecte, crée la source navigateur du HUD dans la scène active et active le tampon de replay ;
+3. **identifie les équipes par SteamID** et attribue les camps automatiquement.
+
+Le seul geste restant : sélectionner les deux équipes.
+
+---
+
+## Architecture
+
+Le point structurant : **le client est local d'abord**. Il lit toujours son cache SQLite, jamais le réseau au moment de dessiner. Le serveur ne fait qu'alimenter ce cache en arrière-plan. Une coupure réseau en plein match ne change donc rien à l'antenne — et sans serveur configuré du tout, le client fonctionne en autonomie complète.
+
+```
+   CS2 ──GSI 10 Hz──►  ┌─────────────────────────────┐
+                       │   Client Electron           │
+   OBS ◄──websocket───►│   • serveur local (1 port)  │◄──sync──►  Serveur
+    │                  │   • moteur GSI              │  (facultatif)
+    │                  │   • cache SQLite + outbox   │
+    │                  │   • capture des temps forts │
+    │  source          └──────────────┬──────────────┘
+    │  navigateur                     │ socket.io
+    └─────────────────────────────────┴──►  Overlay (React)
+```
+
+### Monorepo
+
+| Paquet | Rôle |
+|---|---|
+| `packages/contracts` | Schémas Zod partagés. Source de vérité unique des formes de données. |
+| `packages/gsi` | Moteur : normalisation, killfeed reconstruit, détection des camps, temps forts, records. Aucune dépendance navigateur. |
+| `packages/theme` | Design system « Zeste ». `tokens.ts` génère `tokens.css`. |
+| `apps/overlay` | Le HUD chargé par OBS. Ne prend aucune décision : il dessine. |
+| `apps/client` | Electron — serveur local, moteur, capture, panneau de contrôle. |
+| `apps/server` | Next.js 15 — API et interface admin. |
+| `infra` | docker-compose : Next + Postgres + MinIO + Caddy. |
+
+### Décisions qui méritent d'être connues
+
+**Le GSI de CS2 ne fournit aucun killfeed.** Le moteur le reconstruit en comparant deux trames : un compteur de kills qui monte d'un côté, une santé qui tombe à zéro de l'autre. On n'expose donc que ce qui est réellement déductible — tueur, arme active, victime, headshot. Pas de wallbang ni de noscope, que le flux ne permet pas de connaître honnêtement.
+
+**Les camps sont recalculés à chaque trame** en comptant les joueurs identifiés par SteamID de chaque côté. Conséquence utile : la mi-temps ne demande aucune logique dédiée, puisque les joueurs changent réellement de camp dans le flux. Un bouton d'inversion manuelle reste disponible quand des SteamID manquent au roster, et un indicateur de fiabilité prévient sous 60 %.
+
+**Un seul port** sert l'overlay, les clips, le websocket et l'endpoint GSI. JT's HUD en utilise deux, ce qui double les pare-feux à autoriser.
+
+**Le jaune de marque ne désigne jamais une équipe.** CT reste cyan, T reste orange. Le citron est réservé à la structure — sinon le spectateur confond le camp et l'identité visuelle.
+
+---
+
+## Démarrer
+
+```bash
+pnpm install
+
+pnpm dev:overlay   # overlay seul, http://localhost:5180/?demo=1
+pnpm dev:client    # client Electron
+pnpm dev:server    # admin + API
+```
+
+Le mode `?demo=1` charge une scène fabriquée (pseudo très long, joueur à 3 PV, joueur hors roster, bombe posée) pour travailler l'apparence sans lancer CS2.
+
+### Déployer le serveur
+
+```bash
+cd infra
+cp .env.example .env      # renseigner domaine et secrets
+docker compose up -d
+```
+
+---
+
+## État d'avancement
+
+### Terminé et vérifié
+
+- **`packages/contracts`** — schémas complets (roster, match, état HUD, temps forts, records, config, socket, API).
+- **`packages/gsi`** — moteur complet. **25 tests passent** (`pnpm --filter @citronhud/gsi test`) sur la reconstruction du killfeed et la détection des camps.
+- **`packages/theme`** — tokens + CSS généré, polices Fontsource auto-hébergées.
+- **`apps/overlay`** — **compile et build** (`vite build` OK, 349 ko / 107 ko gzip). Matchbar, pépin signature, listes joueurs, panneau observé, killfeed, radar canvas, scène de replay, bandeaux de record, champ de zestes.
+- **`infra`** — docker-compose, Caddyfile, `.env.example`.
+
+### Client Electron — modules écrits, pas encore assemblés
+
+Écrits : `paths`, `settings`, `db` (cache + outbox), `steam` (détection + install GSI), `obs` (découverte du mot de passe, source navigateur, tampon de replay), `server` (HTTP + GSI + socket.io).
+
+**Reste à faire** : `index.ts` (cycle de vie), `ipc.ts`, `sync.ts` (roster + vidage de l'outbox), `capture/` (OBS prioritaire + repli `desktopCapturer`), `clips.ts` (découpe ffmpeg), `updater.ts` (electron-updater + bundle overlay), le preload et le panneau de contrôle React. Le client **ne compile pas encore** tant que `index.ts` n'existe pas.
+
+### Serveur Next.js — non commencé
+
+Schéma Drizzle, better-auth, API v1, UI admin CRUD, upload S3.
+
+### Non vérifié
+
+Le rendu visuel de l'overlay n'a pas été contrôlé à l'écran : aucun navigateur n'est installé dans cet environnement. À valider via `pnpm dev:overlay` puis `?demo=1`.

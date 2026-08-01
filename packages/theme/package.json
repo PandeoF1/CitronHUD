@@ -1,0 +1,28 @@
+{
+  "name": "@citronhud/theme",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Design system « Zeste » — tokens partagés entre l'overlay HUD et l'interface admin.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    },
+    "./css": "./src/css/index.css",
+    "./css/tokens.css": "./src/css/tokens.css",
+    "./css/fonts.css": "./src/css/fonts.css",
+    "./css/primitives.css": "./src/css/primitives.css",
+    "./css/motion.css": "./src/css/motion.css"
+  },
+  "files": ["src", "scripts"],
+  "scripts": {
+    "tokens": "node scripts/build-tokens.mjs",
+    "typecheck": "tsc --noEmit",
+    "build": "node scripts/build-tokens.mjs"
+  },
+  "dependencies": {
+    "@fontsource-variable/archivo": "^5.3.0",
+    "@fontsource-variable/chivo-mono": "^5.3.0"
+  }
+}

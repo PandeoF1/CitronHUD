@@ -1,0 +1,80 @@
+# CitronHUD — pile serveur.
+#
+# Quatre services : l'application Next.js (admin + API), PostgreSQL, MinIO pour
+# les avatars et les clips, et Caddy qui termine le TLS automatiquement.
+#
+# Démarrage :  cp .env.example .env && docker compose up -d
+
+services:
+  app:
+    build:
+      context: ..
+      dockerfile: infra/Dockerfile
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+      minio:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgres://citron:${POSTGRES_PASSWORD}@postgres:5432/citronhud
+      S3_ENDPOINT: http://minio:9000
+      S3_BUCKET: ${S3_BUCKET}
+      S3_ACCESS_KEY: ${MINIO_ROOT_USER}
+      S3_SECRET_KEY: ${MINIO_ROOT_PASSWORD}
+      # URL publique des fichiers, injectée dans les réponses de l'API : le
+      # client Electron doit pouvoir charger un avatar sans passer par le réseau
+      # interne de Docker.
+      S3_PUBLIC_URL: ${PUBLIC_URL}/files
+      AUTH_SECRET: ${AUTH_SECRET}
+      PUBLIC_URL: ${PUBLIC_URL}
+      NODE_ENV: production
+    expose:
+      - '3000'
+
+  postgres:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: citron
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: citronhud
+    volumes:
+      - ./volumes/postgres:/var/lib/postgresql/data
+    healthcheck:
+      # `pg_isready` seul répond vrai trop tôt pendant l'initialisation ;
+      # préciser la base évite que l'app démarre contre un serveur pas prêt.
+      test: ['CMD-SHELL', 'pg_isready -U citron -d citronhud']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  minio:
+    image: minio/minio:latest
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
+    volumes:
+      - ./volumes/minio:/data
+    healthcheck:
+      test: ['CMD', 'mc', 'ready', 'local']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - '80:80'
+      - '443:443'
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./volumes/caddy/data:/data
+      - ./volumes/caddy/config:/config

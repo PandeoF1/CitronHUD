@@ -1,0 +1,267 @@
+/*
+ * Primitives « Zeste » — la grammaire de forme du système.
+ *
+ * Une seule idée porte toute l'identité : chaque surface est un rectangle dont
+ * certains coins sont coupés à 45°, et la coupe est soulignée d'une arête vive.
+ * C'est la tranche de citron. La constance est ce qui rend la forme
+ * reconnaissable — ne pas inventer d'angle ni de rayon ailleurs.
+ */
+
+/* --------------------------------------------------------------------------
+ * Le polygone chanfreiné
+ *
+ * Un seul polygone couvre les 16 combinaisons de coins : un coin réglé à 0
+ * s'effondre en angle droit. On évite ainsi une classe par combinaison.
+ * -------------------------------------------------------------------------- */
+:root {
+  --poly-chamfer: polygon(
+    var(--ch-tl, 0px) 0,
+    calc(100% - var(--ch-tr, 0px)) 0,
+    100% var(--ch-tr, 0px),
+    100% calc(100% - var(--ch-br, 0px)),
+    calc(100% - var(--ch-br, 0px)) 100%,
+    var(--ch-bl, 0px) 100%,
+    0 calc(100% - var(--ch-bl, 0px)),
+    0 var(--ch-tl, 0px)
+  );
+}
+
+/* --------------------------------------------------------------------------
+ * .plate — la surface de base
+ *
+ * Le fond de l'élément porte la couleur d'arête ; un pseudo-élément en retrait
+ * porte la couleur de face. La bordure suit donc exactement la coupe, ce
+ * qu'aucune `border` CSS ne sait faire sur un `clip-path`.
+ * -------------------------------------------------------------------------- */
+.plate {
+  position: relative;
+  isolation: isolate;
+
+  /* Coins demandés — surchargés par les utilitaires .ch-* ci-dessous. */
+  --c-tl: 0px;
+  --c-tr: 0px;
+  --c-br: 0px;
+  --c-bl: 0px;
+
+  --edge-w: 0px;
+  --edge-color: transparent;
+  --face: var(--surface-flesh);
+
+  --ch-tl: var(--c-tl);
+  --ch-tr: var(--c-tr);
+  --ch-br: var(--c-br);
+  --ch-bl: var(--c-bl);
+
+  clip-path: var(--poly-chamfer);
+  background: var(--edge-color);
+}
+
+.plate > * {
+  position: relative;
+  z-index: 1;
+}
+
+.plate::before {
+  content: '';
+  position: absolute;
+  inset: var(--edge-w);
+  z-index: 0;
+  background: var(--face);
+
+  /*
+   * Rentrer une coupe à 45° de `w` perpendiculairement raccourcit sa branche de
+   * w·(√2−1) ≈ 0.414w. Sans cette correction l'arête paraît plus fine sur la
+   * diagonale que sur les côtés droits.
+   */
+  --ch-tl: max(0px, calc(var(--c-tl) - var(--edge-w) * 0.414));
+  --ch-tr: max(0px, calc(var(--c-tr) - var(--edge-w) * 0.414));
+  --ch-br: max(0px, calc(var(--c-br) - var(--edge-w) * 0.414));
+  --ch-bl: max(0px, calc(var(--c-bl) - var(--edge-w) * 0.414));
+  clip-path: var(--poly-chamfer);
+}
+
+/* Face transparente : le panneau ne pose qu'un voile sur la vidéo. */
+.plate--sheer {
+  --face: var(--scrim-soft);
+}
+.plate--firm {
+  --face: var(--scrim-firm);
+}
+.plate--solid {
+  --face: var(--surface-flesh);
+}
+.plate--raised {
+  --face: var(--surface-husk);
+}
+
+/* ---- Arêtes ---- */
+.edge-rind {
+  --edge-w: var(--edge-regular);
+  --edge-color: var(--brand-rind);
+}
+.edge-rind-hair {
+  --edge-w: var(--edge-hair);
+  --edge-color: var(--brand-rind);
+}
+.edge-rind-bold {
+  --edge-w: var(--edge-bold);
+  --edge-color: var(--brand-rind);
+}
+.edge-shell {
+  --edge-w: var(--edge-hair);
+  --edge-color: var(--surface-shell);
+}
+.edge-ct {
+  --edge-w: var(--edge-regular);
+  --edge-color: var(--side-ct);
+}
+.edge-t {
+  --edge-w: var(--edge-regular);
+  --edge-color: var(--side-t);
+}
+
+/* --------------------------------------------------------------------------
+ * Utilitaires de coins
+ *
+ * Nommage : ch-<taille>-<coins>. Les coins suivent le sens horaire depuis le
+ * haut-gauche (tl, tr, br, bl).
+ * -------------------------------------------------------------------------- */
+.ch-xs-all {
+  --c-tl: var(--chamfer-xs);
+  --c-tr: var(--chamfer-xs);
+  --c-br: var(--chamfer-xs);
+  --c-bl: var(--chamfer-xs);
+}
+.ch-sm-all {
+  --c-tl: var(--chamfer-sm);
+  --c-tr: var(--chamfer-sm);
+  --c-br: var(--chamfer-sm);
+  --c-bl: var(--chamfer-sm);
+}
+.ch-md-all {
+  --c-tl: var(--chamfer-md);
+  --c-tr: var(--chamfer-md);
+  --c-br: var(--chamfer-md);
+  --c-bl: var(--chamfer-md);
+}
+.ch-lg-all {
+  --c-tl: var(--chamfer-lg);
+  --c-tr: var(--chamfer-lg);
+  --c-br: var(--chamfer-lg);
+  --c-bl: var(--chamfer-lg);
+}
+
+/* Diagonale — la coupe la plus utilisée : elle donne une direction au panneau. */
+.ch-sm-diag {
+  --c-tr: var(--chamfer-sm);
+  --c-bl: var(--chamfer-sm);
+}
+.ch-md-diag {
+  --c-tr: var(--chamfer-md);
+  --c-bl: var(--chamfer-md);
+}
+
+/* Bas seulement — pour la matchbar en haut d'écran (le « quartier »). */
+.ch-lg-bottom {
+  --c-br: var(--chamfer-lg);
+  --c-bl: var(--chamfer-lg);
+}
+.ch-md-bottom {
+  --c-br: var(--chamfer-md);
+  --c-bl: var(--chamfer-md);
+}
+
+/* Côté extérieur — listes joueurs : la coupe pointe vers le bord de l'écran. */
+.ch-sm-right {
+  --c-tr: var(--chamfer-sm);
+  --c-br: var(--chamfer-sm);
+}
+.ch-sm-left {
+  --c-tl: var(--chamfer-sm);
+  --c-bl: var(--chamfer-sm);
+}
+
+/* --------------------------------------------------------------------------
+ * Le pépin — élément signature
+ *
+ * Séparateur central entre les deux scores. Ce n'est pas un ornement : il
+ * encode l'état de la manche. Au repos, deux losanges sombres. Quand une équipe
+ * gagne la manche, il s'incline vers elle. Bombe posée, il se vide de haut en
+ * bas comme un sablier.
+ * -------------------------------------------------------------------------- */
+.pip {
+  position: relative;
+  width: 18px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  transition:
+    transform var(--dur-swap) var(--ease-out),
+    filter var(--dur-swap) var(--ease-out);
+}
+
+.pip__seed {
+  width: 10px;
+  height: 18px;
+  background: var(--surface-shell);
+  /* Forme de pépin : ovale pointu aux deux extrémités. */
+  border-radius: 50% 50% 50% 50% / 32% 32% 68% 68%;
+  transition: background var(--dur-swap) var(--ease-out);
+}
+
+.pip[data-lean='left'] {
+  transform: rotate(-14deg);
+}
+.pip[data-lean='right'] {
+  transform: rotate(14deg);
+}
+
+.pip[data-live='true'] .pip__seed {
+  background: var(--brand-rind);
+}
+
+/* Bombe posée : le pépin devient un sablier qui se vide. */
+.pip[data-bomb='true'] .pip__seed {
+  background: linear-gradient(
+    to top,
+    var(--sem-bomb) 0%,
+    var(--sem-bomb) var(--bomb-progress, 100%),
+    var(--surface-shell) var(--bomb-progress, 100%)
+  );
+}
+
+/* --------------------------------------------------------------------------
+ * Barres de vie
+ * -------------------------------------------------------------------------- */
+.hpbar {
+  position: relative;
+  height: 3px;
+  background: var(--surface-shell);
+  overflow: hidden;
+}
+
+.hpbar__fill {
+  height: 100%;
+  width: var(--hp, 100%);
+  background: var(--hp-color, var(--ink-pith));
+  transition: width var(--dur-tick) linear;
+}
+
+/* Traînée de dégâts : rappelle brièvement la valeur précédente. */
+.hpbar__ghost {
+  position: absolute;
+  inset: 0 auto 0 0;
+  height: 100%;
+  width: var(--hp-ghost, 100%);
+  background: var(--sem-blood);
+  opacity: 0.5;
+  transition: width 620ms var(--ease-out) 180ms;
+}
+
+/* --------------------------------------------------------------------------
+ * Focus visible — même en overlay, l'admin partage ces primitives.
+ * -------------------------------------------------------------------------- */
+:where(a, button, input, select, textarea, [tabindex]):focus-visible {
+  outline: 2px solid var(--brand-rind);
+  outline-offset: 2px;
+}

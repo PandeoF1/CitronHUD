@@ -1,0 +1,8 @@
+node_modules
+dist
+out
+.next
+.turbo
+pnpm-lock.yaml
+JTs-Hud
+*.min.js

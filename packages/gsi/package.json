@@ -1,0 +1,22 @@
+{
+  "name": "@citronhud/gsi",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Moteur GSI : normalisation des frames CS2, killfeed reconstruit, détection des camps et des temps forts.",
+  "exports": {
+    ".": {
+      "types": "./src/index.ts",
+      "default": "./src/index.ts"
+    }
+  },
+  "files": ["src"],
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "build": "echo \"@citronhud/gsi est consommé en source\" && exit 0"
+  },
+  "dependencies": {
+    "@citronhud/contracts": "workspace:*"
+  }
+}

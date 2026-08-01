@@ -1,0 +1,13 @@
+packages:
+  - 'apps/*'
+  - 'packages/*'
+
+# JTs-Hud is a read-only reference checkout, not part of the build.
+ignoredBuiltDependencies:
+  - electron
+onlyBuiltDependencies:
+  - better-sqlite3
+  - electron
+  - esbuild
+  - ffmpeg-static
+  - sharp

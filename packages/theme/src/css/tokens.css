@@ -1,0 +1,168 @@
+/*
+ * GÉNÉRÉ — ne pas éditer à la main.
+ * Source : packages/theme/src/tokens.ts
+ * Régénérer : pnpm --filter @citronhud/theme tokens
+ */
+
+:root {
+  /* ---- Surfaces (anatomie du citron, chaudes) ---- */
+  --surface-seed: #0A0906;
+  --surface-char: #12100A;
+  --surface-flesh: #1B1810;
+  --surface-husk: #262117;
+  --surface-shell: #3A3324;
+
+  /* ---- Marque : structure uniquement, jamais une équipe ---- */
+  --brand-rind: #FFC800;
+  --brand-zest: #FFE45C;
+  --brand-peel: #C99A00;
+
+  /* ---- Texte ---- */
+  --ink-pith: #F3EEDC;
+  --ink-pulp: #A79E85;
+  --ink-rind-dim: #6E6752;
+  --ink-white: #FFFFFF;
+  --ink-on-rind: #171307;
+
+  /* ---- Camps (surchargeables par le panneau HUD) ---- */
+  --side-ct: #35B0E8;
+  --side-ct-deep: #1B6E95;
+  --side-t: #F0703C;
+  --side-t-deep: #9C3F1B;
+
+  /* ---- Sémantique de jeu ---- */
+  --sem-leaf: #4FA96B;
+  --sem-leaf-deep: #2E7D4F;
+  --sem-blood: #FF4438;
+  --sem-bomb: #FF3B30;
+  --sem-defuse: #35B0E8;
+  --sem-flash: #F3EEDC;
+  --sem-fire: #FF8A3D;
+  --sem-smoke: #9AA0A6;
+  --sem-warn: #FFB020;
+
+  /* ---- Voiles de lisibilité sur vidéo ---- */
+  --scrim-soft: rgba(10, 9, 6, 0.62);
+  --scrim-firm: rgba(10, 9, 6, 0.82);
+  --scrim-full: rgba(10, 9, 6, 0.94);
+
+  /* ---- Typographie ---- */
+  --font-display: 'Archivo Variable', 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --font-body: 'Archivo Variable', 'Archivo', 'Helvetica Neue', Arial, sans-serif;
+  --font-mono: 'Chivo Mono Variable', 'Chivo Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  --wdth-expanded: 112;
+  --wdth-normal: 100;
+  --wdth-condensed: 84;
+  --wdth-narrow: 70;
+
+  /* ---- Échelle HUD (px de canevas 1920×1080) ---- */
+  --hud-score-size: 62px;
+  --hud-score-weight: 800;
+  --hud-score-width: 112;
+  --hud-score-tracking: -0.02em;
+  --hud-timer-size: 34px;
+  --hud-timer-weight: 700;
+  --hud-timer-width: 100;
+  --hud-timer-tracking: 0.01em;
+  --hud-team-name-size: 25px;
+  --hud-team-name-weight: 700;
+  --hud-team-name-width: 92;
+  --hud-team-name-tracking: 0.005em;
+  --hud-observed-name-size: 30px;
+  --hud-observed-name-weight: 700;
+  --hud-observed-name-width: 90;
+  --hud-observed-name-tracking: 0;
+  --hud-player-name-size: 17px;
+  --hud-player-name-weight: 600;
+  --hud-player-name-width: 84;
+  --hud-player-name-tracking: 0.01em;
+  --hud-stat-size: 14px;
+  --hud-stat-weight: 500;
+  --hud-stat-width: 100;
+  --hud-stat-tracking: 0.02em;
+  --hud-money-size: 15px;
+  --hud-money-weight: 600;
+  --hud-money-width: 84;
+  --hud-money-tracking: 0.01em;
+  --hud-eyebrow-size: 11px;
+  --hud-eyebrow-weight: 700;
+  --hud-eyebrow-width: 100;
+  --hud-eyebrow-tracking: 0.16em;
+  --hud-micro-size: 10px;
+  --hud-micro-weight: 600;
+  --hud-micro-width: 84;
+  --hud-micro-tracking: 0.12em;
+
+  /* ---- Échelle interface admin ---- */
+  --ui-display-size: 2.5rem;
+  --ui-display-weight: 800;
+  --ui-display-width: 112;
+  --ui-display-tracking: -0.02em;
+  --ui-h1-size: 1.75rem;
+  --ui-h1-weight: 700;
+  --ui-h1-width: 100;
+  --ui-h1-tracking: -0.01em;
+  --ui-h2-size: 1.25rem;
+  --ui-h2-weight: 700;
+  --ui-h2-width: 100;
+  --ui-h2-tracking: 0;
+  --ui-body-size: 0.9375rem;
+  --ui-body-weight: 400;
+  --ui-body-width: 100;
+  --ui-body-tracking: 0;
+  --ui-small-size: 0.8125rem;
+  --ui-small-weight: 500;
+  --ui-small-width: 100;
+  --ui-small-tracking: 0.01em;
+  --ui-eyebrow-size: 0.6875rem;
+  --ui-eyebrow-weight: 700;
+  --ui-eyebrow-width: 100;
+  --ui-eyebrow-tracking: 0.16em;
+
+  /* ---- Chanfrein : la grammaire de forme ---- */
+  --chamfer-xs: 6px;
+  --chamfer-sm: 10px;
+  --chamfer-md: 16px;
+  --chamfer-lg: 26px;
+  --edge-hair: 1px;
+  --edge-regular: 2px;
+  --edge-bold: 3px;
+
+  /* ---- Espacement ---- */
+  --space-0: 0px;
+  --space-1: 2px;
+  --space-2: 4px;
+  --space-3: 8px;
+  --space-4: 12px;
+  --space-5: 16px;
+  --space-6: 24px;
+  --space-7: 32px;
+  --space-8: 48px;
+  --space-9: 64px;
+
+  /* ---- Mouvement ---- */
+  --dur-tick: 120ms;
+  --dur-swap: 220ms;
+  --dur-panel: 380ms;
+  --dur-squeeze: 720ms;
+  --dur-toast: 520ms;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-in: cubic-bezier(0.7, 0, 0.84, 0);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-squeeze: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* ---- Halos ---- */
+  --glow-rind: 0 0 0 1px rgba(255, 200, 0, 0.5), 0 0 18px -4px rgba(255, 200, 0, 0.55);
+  --glow-blood: 0 0 0 1px rgba(255, 68, 56, 0.55), 0 0 22px -6px rgba(255, 68, 56, 0.7);
+  --glow-lift: 0 12px 32px -12px rgba(0, 0, 0, 0.85);
+
+  /* ---- Couches ---- */
+  --layer-radar: 10;
+  --layer-roster: 20;
+  --layer-matchbar: 30;
+  --layer-observed: 40;
+  --layer-killfeed: 50;
+  --layer-toast: 60;
+  --layer-particles: 70;
+  --layer-replay: 80;
+}

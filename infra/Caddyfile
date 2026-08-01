@@ -1,0 +1,17 @@
+# Caddy obtient et renouvelle le certificat TLS tout seul à partir du domaine.
+# Aucune configuration de certificat n'est nécessaire.
+
+{$DOMAIN} {
+	encode zstd gzip
+
+	# Fichiers publics (avatars, logos, clips) servis directement depuis MinIO.
+	# Passer par l'application n'apporterait rien et lui ferait porter le trafic
+	# vidéo des clips de replay.
+	handle_path /files/* {
+		reverse_proxy minio:9000
+	}
+
+	handle {
+		reverse_proxy app:3000
+	}
+}
