@@ -77,11 +77,17 @@ export function MatchBar({ hud, config }: MatchBarProps) {
         <TeamSide team={hud.teams.left} side="left" color={leftColor} />
 
         <div className="matchbar__center">
-          <div className="matchbar__score matchbar__score--left tnum" data-match-point={hud.teams.left.matchPoint}>
+          <div
+            className="matchbar__score matchbar__score--left tnum"
+            data-match-point={hud.teams.left.matchPoint}
+          >
             {hud.teams.left.score}
           </div>
           <Pip hud={hud} />
-          <div className="matchbar__score matchbar__score--right tnum" data-match-point={hud.teams.right.matchPoint}>
+          <div
+            className="matchbar__score matchbar__score--right tnum"
+            data-match-point={hud.teams.right.matchPoint}
+          >
             {hud.teams.right.score}
           </div>
         </div>
@@ -91,9 +97,7 @@ export function MatchBar({ hud, config }: MatchBarProps) {
 
       <div className="timer plate" data-bomb={bombPlanted} data-too-late={defuseTooLate}>
         <div className="timer__value">{timeValue}</div>
-        <div className="timer__label">
-          {phaseLabel(hud.phase, bombPlanted, defuseTooLate)}
-        </div>
+        <div className="timer__label">{phaseLabel(hud.phase, bombPlanted, defuseTooLate)}</div>
       </div>
     </>
   )

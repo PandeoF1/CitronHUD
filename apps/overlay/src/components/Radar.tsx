@@ -152,8 +152,7 @@ export function Radar({ players, mapName, config, bombPosition }: RadarProps) {
         <div className="radar__fallback">
           <strong>Radar indisponible</strong>
           <span>
-            Aucune géométrie connue pour cette carte. Le reste du HUD fonctionne
-            normalement.
+            Aucune géométrie connue pour cette carte. Le reste du HUD fonctionne normalement.
           </span>
         </div>
       </div>
@@ -162,11 +161,7 @@ export function Radar({ players, mapName, config, bombPosition }: RadarProps) {
 
   return (
     <div className="radar plate" style={{ width: size, height: size }}>
-      <canvas
-        ref={canvasRef}
-        className="radar__canvas"
-        style={{ width: size, height: size }}
-      />
+      <canvas ref={canvasRef} className="radar__canvas" style={{ width: size, height: size }} />
     </div>
   )
 }

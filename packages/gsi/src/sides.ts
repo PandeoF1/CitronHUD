@@ -53,10 +53,7 @@ export interface SideEvidence {
  * Fonction pure, sans état : testable seule et réutilisée par le panneau de
  * contrôle pour afficher un diagnostic avant même le lancement du HUD.
  */
-export function detectSides(
-  frame: NormalizedFrame,
-  context: SideDetectionContext
-): SideEvidence {
+export function detectSides(frame: NormalizedFrame, context: SideDetectionContext): SideEvidence {
   const { playerTeam, leftTeamId, rightTeamId } = context
 
   if (!leftTeamId && !rightTeamId) {

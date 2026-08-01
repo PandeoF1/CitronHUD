@@ -250,15 +250,9 @@ export class CitronEngine {
     const bomb = frame.bomb
     if (!bomb) return null
 
-    const state = ([
-      'carried',
-      'dropped',
-      'planting',
-      'planted',
-      'defusing',
-      'defused',
-      'exploded'
-    ] as const).includes(bomb.state as never)
+    const state = (
+      ['carried', 'dropped', 'planting', 'planted', 'defusing', 'defused', 'exploded'] as const
+    ).includes(bomb.state as never)
       ? (bomb.state as Bomb['state'])
       : 'carried'
 

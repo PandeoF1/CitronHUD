@@ -26,13 +26,7 @@ export function EventBadge({ event }: { event: HudState['event'] }) {
  * résultats par numéro de manche sous forme de chaîne (« ct_win_defuse »…) :
  * seul le préfixe nous intéresse pour savoir quel camp l'emporte.
  */
-export function RoundHistory({
-  hud,
-  config
-}: {
-  hud: HudState
-  config: HudConfig
-}) {
+export function RoundHistory({ hud, config }: { hud: HudState; config: HudConfig }) {
   if (!config.showRoundHistory || !hud.map) return null
 
   const entries = Object.entries(hud.map.roundWins)

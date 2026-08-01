@@ -157,7 +157,13 @@ function handleGsiFrame(payload: unknown): void {
       sessionId,
       matchId: getMatch().id,
       occurredAt: new Date().toISOString(),
-      clip: { status: 'requested', source: null, localPath: null, remoteUrl: null, durationMs: null }
+      clip: {
+        status: 'requested',
+        source: null,
+        localPath: null,
+        remoteUrl: null,
+        durationMs: null
+      }
     } as unknown as Highlight
     void handleHighlight(highlight)
   }
@@ -274,7 +280,10 @@ async function bootstrap(): Promise<void> {
   // Installation du GSI au premier lancement, sans rien demander.
   if (!isGsiInstalled(settings.hudPort, settings.steamPath)) {
     const result = installGsiConfig(settings.hudPort, settings.steamPath)
-    updateClientSettings({ gsiInstalled: result.ok, steamPath: settings.steamPath ?? findSteamPath() })
+    updateClientSettings({
+      gsiInstalled: result.ok,
+      steamPath: settings.steamPath ?? findSteamPath()
+    })
     window?.webContents.send('notice', result.message)
   }
 

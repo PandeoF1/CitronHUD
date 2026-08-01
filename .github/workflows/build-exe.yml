@@ -2,7 +2,7 @@ name: Build Windows Executable (.exe)
 
 on:
   push:
-    branches: [ main ]
+    branches: [main]
     tags:
       - 'v*'
   workflow_dispatch:

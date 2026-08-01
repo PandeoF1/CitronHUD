@@ -1,6 +1,12 @@
 import { z } from 'zod'
 import { idSchema, isoDateSchema, paginatedSchema } from './common'
-import { createPlayerSchema, createTeamSchema, playerSchema, rosterSnapshotSchema, teamSchema } from './roster'
+import {
+  createPlayerSchema,
+  createTeamSchema,
+  playerSchema,
+  rosterSnapshotSchema,
+  teamSchema
+} from './roster'
 import { createHighlightSchema, highlightSchema } from './highlight'
 import { createRecordSchema, recordMetricSchema, recordSchema, recordScopeSchema } from './record'
 

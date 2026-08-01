@@ -233,7 +233,8 @@ export class DemoMatch {
       tScore: this.tScore,
       players: this.players,
       observed,
-      bomb: inRound > 30 && inRound < 54 ? { state: 'planted', countdown: 40 - (inRound - 30) } : null
+      bomb:
+        inRound > 30 && inRound < 54 ? { state: 'planted', countdown: 40 - (inRound - 30) } : null
     })
   }
 }

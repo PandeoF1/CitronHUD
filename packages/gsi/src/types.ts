@@ -168,14 +168,7 @@ export interface NormalizedPlayer {
 }
 
 export type RoundPhase =
-  | 'warmup'
-  | 'freezetime'
-  | 'live'
-  | 'over'
-  | 'intermission'
-  | 'timeout'
-  | 'gameover'
-  | 'unknown'
+  'warmup' | 'freezetime' | 'live' | 'over' | 'intermission' | 'timeout' | 'gameover' | 'unknown'
 
 export interface NormalizedFrame {
   /** Millisecondes epoch de réception, pas l'horodatage du fournisseur. */

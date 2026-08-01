@@ -135,7 +135,10 @@ export function isCarriedItem(name: string | null | undefined): boolean {
 }
 
 /** Classe une arme pour l'affichage : primaire, secondaire, utilitaire, mêlée. */
-export function weaponSlot(name: string, type: string | null): 'primary' | 'secondary' | 'grenade' | 'melee' | 'item' {
+export function weaponSlot(
+  name: string,
+  type: string | null
+): 'primary' | 'secondary' | 'grenade' | 'melee' | 'item' {
   if (isKnife(name)) return 'melee'
   if (isGrenade(name)) return 'grenade'
   if (isCarriedItem(name)) return 'item'

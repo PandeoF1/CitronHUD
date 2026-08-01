@@ -38,9 +38,7 @@ export function KillFeed({ kills, config }: KillFeedProps) {
           }
         >
           {/* Un suicide n'a pas de tueur : on ne fabrique pas un nom vide. */}
-          {kill.killer && (
-            <span className="kill__name kill__name--killer">{kill.killer.name}</span>
-          )}
+          {kill.killer && <span className="kill__name kill__name--killer">{kill.killer.name}</span>}
 
           {kill.assister && (
             <span className="kill__name kill__name--victim">+ {kill.assister.name}</span>

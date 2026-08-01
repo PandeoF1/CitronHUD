@@ -46,7 +46,10 @@ export class RecordTracker {
   /** Ce qui a déjà été annoncé sur ce match. */
   private readonly announced = new Set<string>()
   /** Meilleures valeurs atteintes pendant la session, à synchroniser plus tard. */
-  private readonly session = new Map<string, { metric: RecordMetric; steamId: string; value: number }>()
+  private readonly session = new Map<
+    string,
+    { metric: RecordMetric; steamId: string; value: number }
+  >()
 
   private currentMap: string | null = null
 

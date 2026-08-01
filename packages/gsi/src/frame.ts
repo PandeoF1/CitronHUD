@@ -231,7 +231,8 @@ export function normalizeFrame(payload: RawGsiPayload, receivedAt = Date.now()):
     bomb,
     players,
     playersBySteamId,
-    observedSteamId: observedSteamId && playersBySteamId.has(observedSteamId) ? observedSteamId : null
+    observedSteamId:
+      observedSteamId && playersBySteamId.has(observedSteamId) ? observedSteamId : null
   }
 }
 

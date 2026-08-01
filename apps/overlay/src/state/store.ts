@@ -100,7 +100,8 @@ export const useOverlay = create<OverlayState>((set) => ({
 
   setPendingHighlight: (pendingHighlight) => set({ pendingHighlight }),
 
-  startReplay: (replay) => set({ replay: { ...replay, startedAt: Date.now() }, pendingHighlight: null }),
+  startReplay: (replay) =>
+    set({ replay: { ...replay, startedAt: Date.now() }, pendingHighlight: null }),
   stopReplay: () => set({ replay: null }),
 
   burst: (origin, intensity) =>

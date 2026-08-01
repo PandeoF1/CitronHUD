@@ -41,10 +41,7 @@ function diff(before: SimulatedPlayerSpec[], after: SimulatedPlayerSpec[], round
   const engine = new KillFeedEngine()
   // Première passe : établit la référence, n'émet rien par construction.
   engine.ingest(normalizeFrame(buildFrame({ round, players: before, phase: 'live' })), slotOf)
-  return engine.ingest(
-    normalizeFrame(buildFrame({ round, players: after, phase: 'live' })),
-    slotOf
-  )
+  return engine.ingest(normalizeFrame(buildFrame({ round, players: after, phase: 'live' })), slotOf)
 }
 
 describe('KillFeedEngine', () => {

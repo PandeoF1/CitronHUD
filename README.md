@@ -36,15 +36,15 @@ Le point structurant : **le client est local d'abord**. Il lit toujours son cach
 
 ### Monorepo
 
-| Paquet | Rôle |
-|---|---|
-| `packages/contracts` | Schémas Zod partagés. Source de vérité unique des formes de données. |
-| `packages/gsi` | Moteur : normalisation, killfeed reconstruit, détection des camps, temps forts, records. Aucune dépendance navigateur. |
-| `packages/theme` | Design system « Zeste ». `tokens.ts` génère `tokens.css`. |
-| `apps/overlay` | Le HUD chargé par OBS. Ne prend aucune décision : il dessine. |
-| `apps/client` | Electron — serveur local, moteur, capture, panneau de contrôle. |
-| `apps/server` | Next.js 15 — API et interface admin. |
-| `infra` | docker-compose : Next + Postgres + MinIO + Caddy. |
+| Paquet               | Rôle                                                                                                                   |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------- |
+| `packages/contracts` | Schémas Zod partagés. Source de vérité unique des formes de données.                                                   |
+| `packages/gsi`       | Moteur : normalisation, killfeed reconstruit, détection des camps, temps forts, records. Aucune dépendance navigateur. |
+| `packages/theme`     | Design system « Zeste ». `tokens.ts` génère `tokens.css`.                                                              |
+| `apps/overlay`       | Le HUD chargé par OBS. Ne prend aucune décision : il dessine.                                                          |
+| `apps/client`        | Electron — serveur local, moteur, capture, panneau de contrôle.                                                        |
+| `apps/server`        | Next.js 15 — API et interface admin.                                                                                   |
+| `infra`              | docker-compose : Next + Postgres + MinIO + Caddy.                                                                      |
 
 ### Décisions qui méritent d'être connues
 

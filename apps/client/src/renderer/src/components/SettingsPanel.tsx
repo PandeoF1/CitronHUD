@@ -77,7 +77,9 @@ export function SettingsPanel({ settings, playerCount, onChange, onNotice }: Set
           </button>
           <button
             className="btn btn--ghost"
-            onClick={() => void window.citron.syncNow().then(() => onNotice('Synchronisation lancée.'))}
+            onClick={() =>
+              void window.citron.syncNow().then(() => onNotice('Synchronisation lancée.'))
+            }
           >
             Synchroniser maintenant
           </button>
@@ -88,8 +90,9 @@ export function SettingsPanel({ settings, playerCount, onChange, onNotice }: Set
       <section className="card">
         <h2 className="card__title">CS2</h2>
         <p className="card__hint">
-          Le fichier de configuration est installé automatiquement au premier lancement. Indiquez le chemin
-          d’installation de Steam ou de CS2 si le jeu est sur une bibliothèque secondaire ou un dossier personnalisé.
+          Le fichier de configuration est installé automatiquement au premier lancement. Indiquez le
+          chemin d’installation de Steam ou de CS2 si le jeu est sur une bibliothèque secondaire ou
+          un dossier personnalisé.
         </p>
 
         <div className="field">
@@ -128,9 +131,9 @@ export function SettingsPanel({ settings, playerCount, onChange, onNotice }: Set
       <section className="card">
         <h2 className="card__title">OBS</h2>
         <p className="card__hint">
-          Le mot de passe websocket est lu directement dans la configuration d’OBS — vous n’avez rien
-          à saisir. Activez simplement le serveur websocket dans OBS (Outils › Paramètres du serveur
-          WebSocket).
+          Le mot de passe websocket est lu directement dans la configuration d’OBS — vous n’avez
+          rien à saisir. Activez simplement le serveur websocket dans OBS (Outils › Paramètres du
+          serveur WebSocket).
         </p>
         <div className="actions">
           <button className="btn" onClick={() => void window.citron.reconnectObs()}>

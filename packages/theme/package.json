@@ -15,7 +15,10 @@
     "./css/primitives.css": "./src/css/primitives.css",
     "./css/motion.css": "./src/css/motion.css"
   },
-  "files": ["src", "scripts"],
+  "files": [
+    "src",
+    "scripts"
+  ],
   "scripts": {
     "tokens": "node scripts/build-tokens.mjs",
     "typecheck": "tsc --noEmit",

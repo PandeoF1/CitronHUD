@@ -100,13 +100,7 @@ export function Roster({ side, players, color, config }: RosterProps) {
   return (
     <div className={`roster roster--${side}`}>
       {[...players].sort(bySlot).map((player) => (
-        <PlayerRow
-          key={player.steamId}
-          player={player}
-          side={side}
-          color={color}
-          config={config}
-        />
+        <PlayerRow key={player.steamId} player={player} side={side} color={color} config={config} />
       ))}
     </div>
   )

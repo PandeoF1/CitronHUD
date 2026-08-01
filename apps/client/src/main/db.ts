@@ -171,8 +171,7 @@ export function failOutbox(ids: number[]): void {
 
 export function getMeta(key: string): string | null {
   const row = getDb().prepare('SELECT value FROM meta WHERE key = ?').get(key) as
-    | { value: string }
-    | undefined
+    { value: string } | undefined
   return row?.value ?? null
 }
 

@@ -13,7 +13,14 @@ import { homedir, platform } from 'node:os'
 
 /** AppID de Counter-Strike 2. */
 const CS2_APP_ID = '730'
-const CS2_CFG_RELATIVE = join('steamapps', 'common', 'Counter-Strike Global Offensive', 'game', 'csgo', 'cfg')
+const CS2_CFG_RELATIVE = join(
+  'steamapps',
+  'common',
+  'Counter-Strike Global Offensive',
+  'game',
+  'csgo',
+  'cfg'
+)
 
 /** Emplacements par défaut de Steam, par système. */
 function defaultSteamPaths(): string[] {

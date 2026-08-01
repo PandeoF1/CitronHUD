@@ -47,9 +47,12 @@ export function Pip({ hud }: PipProps) {
     timer.current = setTimeout(() => setLean(null), WIN_ANIMATION_MS)
   }, [leftScore, rightScore])
 
-  useEffect(() => () => {
-    if (timer.current) clearTimeout(timer.current)
-  }, [])
+  useEffect(
+    () => () => {
+      if (timer.current) clearTimeout(timer.current)
+    },
+    []
+  )
 
   const bomb = hud.bomb
   const bombPlanted = bomb?.state === 'planted' || bomb?.state === 'defusing'

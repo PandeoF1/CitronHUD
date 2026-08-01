@@ -24,13 +24,12 @@ function Stat({ value, label }: { value: string | number; label: string }) {
 
 export function ObservedPanel({ player, showAvatar }: ObservedPanelProps) {
   const hpColor = player.alive ? healthColor(player.health) : 'var(--ink-rind-dim)'
-  const active = player.weapons.find((weapon) => weapon.state === 'active' || weapon.state === 'reloading')
+  const active = player.weapons.find(
+    (weapon) => weapon.state === 'active' || weapon.state === 'reloading'
+  )
 
   return (
-    <div
-      className="observed plate"
-      style={{ ['--hp-color' as string]: hpColor }}
-    >
+    <div className="observed plate" style={{ ['--hp-color' as string]: hpColor }}>
       {showAvatar && (
         <div className="observed__avatar plate">
           {player.avatarUrl ? (

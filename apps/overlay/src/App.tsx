@@ -105,11 +105,7 @@ export function App() {
 
       {inReplay && <ReplayStage replay={replay} />}
 
-      <ZestField
-        bursts={bursts}
-        intensity={config.zestIntensity}
-        enabled={config.zestEffects}
-      />
+      <ZestField bursts={bursts} intensity={config.zestIntensity} enabled={config.zestEffects} />
     </div>
   )
 }

@@ -1,0 +1,31 @@
+# Build artifacts & caches
+node_modules
+dist
+out
+.turbo
+release
+*.tsbuildinfo
+
+# Electron client — not part of the server image
+apps/client
+
+# Git & CI
+.git
+.github
+
+# Runtime data
+data
+clips
+recordings
+
+# OS / editors
+.DS_Store
+Thumbs.db
+.idea
+.vscode
+
+# Reference checkout
+JTs-Hud
+
+# Docker volumes
+infra/volumes

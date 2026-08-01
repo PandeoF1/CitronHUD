@@ -6,7 +6,15 @@ import {
   type Player,
   type Team
 } from '@citronhud/contracts'
-import { dropOutbox, failOutbox, getMeta, loadRoster, peekOutbox, replaceRoster, setMeta } from './db'
+import {
+  dropOutbox,
+  failOutbox,
+  getMeta,
+  loadRoster,
+  peekOutbox,
+  replaceRoster,
+  setMeta
+} from './db'
 import { getClientSettings } from './settings'
 
 /**

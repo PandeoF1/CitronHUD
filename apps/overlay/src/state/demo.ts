@@ -154,7 +154,14 @@ export function buildDemoState(): HudState {
     series: {
       format: 'bo3',
       maps: [
-        { mapName: 'de_ancient', label: 'Ancient', played: true, left: 13, right: 8, winner: 'left' },
+        {
+          mapName: 'de_ancient',
+          label: 'Ancient',
+          played: true,
+          left: 13,
+          right: 8,
+          winner: 'left'
+        },
         { mapName: 'de_mirage', label: 'Mirage', played: false, left: 9, right: 8, winner: null },
         { mapName: 'de_nuke', label: 'Nuke', played: false, left: null, right: null, winner: null }
       ]

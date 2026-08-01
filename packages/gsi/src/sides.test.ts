@@ -121,7 +121,10 @@ describe('SideDetector', () => {
     const stable = fullMatch('CT')
     const flipped = fullMatch('T')
 
-    detector.update(normalizeFrame(buildFrame({ players: stable.players })), context(stable.playerTeam))
+    detector.update(
+      normalizeFrame(buildFrame({ players: stable.players })),
+      context(stable.playerTeam)
+    )
     // Une trame isolée en désaccord — typiquement une reconnexion en cours.
     detector.update(
       normalizeFrame(buildFrame({ players: flipped.players })),
@@ -157,7 +160,10 @@ describe('SideDetector', () => {
         context(flipped.playerTeam)
       )
     }
-    detector.update(normalizeFrame(buildFrame({ players: stable.players })), context(stable.playerTeam))
+    detector.update(
+      normalizeFrame(buildFrame({ players: stable.players })),
+      context(stable.playerTeam)
+    )
     detector.update(
       normalizeFrame(buildFrame({ players: flipped.players })),
       context(flipped.playerTeam)

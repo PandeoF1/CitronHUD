@@ -41,11 +41,7 @@ const GRAVITY = 780
 const DRAG = 0.86
 
 /** Un zeste : quartier allongé, pointu aux deux bouts. */
-function drawZest(
-  ctx: CanvasRenderingContext2D,
-  particle: Particle,
-  alpha: number
-): void {
+function drawZest(ctx: CanvasRenderingContext2D, particle: Particle, alpha: number): void {
   ctx.save()
   ctx.translate(particle.x, particle.y)
   ctx.rotate(particle.angle)
@@ -79,8 +75,7 @@ export function ZestField({ bursts, intensity, enabled }: ZestFieldProps) {
       seenRef.current.add(burst.id)
 
       const count = Math.round(COUNT_BY_INTENSITY[intensity] * burst.intensity)
-      const originX =
-        burst.origin === 'left' ? 0.16 : burst.origin === 'right' ? 0.84 : 0.5
+      const originX = burst.origin === 'left' ? 0.16 : burst.origin === 'right' ? 0.84 : 0.5
       const x = originX * canvas.width
       const y = canvas.height * 0.42
 
@@ -100,10 +95,7 @@ export function ZestField({ bursts, intensity, enabled }: ZestFieldProps) {
           size: 4 + Math.random() * 7,
           spin: (Math.random() - 0.5) * 9,
           angle: Math.random() * Math.PI * 2,
-          color:
-            zestParticlePalette[
-              Math.floor(Math.random() * zestParticlePalette.length)
-            ]!
+          color: zestParticlePalette[Math.floor(Math.random() * zestParticlePalette.length)]!
         })
       }
     }

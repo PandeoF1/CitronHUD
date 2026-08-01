@@ -41,10 +41,7 @@ export { healthColor }
  * défaut on garde les couleurs de camp : le spectateur lit « CT » et « T »
  * avant de lire un nom d'équipe, et changer cette convention désoriente.
  */
-export function teamColor(
-  team: ResolvedTeam,
-  colors: { ct: string; t: string }
-): string {
+export function teamColor(team: ResolvedTeam, colors: { ct: string; t: string }): string {
   if (team.color) return team.color
   return team.side === 'CT' ? colors.ct : colors.t
 }
