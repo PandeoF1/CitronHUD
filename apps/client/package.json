@@ -16,9 +16,6 @@
     "package:mac": "electron-vite build && electron-builder --mac"
   },
   "dependencies": {
-    "@citronhud/contracts": "workspace:*",
-    "@citronhud/gsi": "workspace:*",
-    "@citronhud/theme": "workspace:*",
     "adm-zip": "^0.5.16",
     "better-sqlite3": "^11.9.1",
     "cors": "^2.8.5",
@@ -30,7 +27,10 @@
     "zod": "^4.1.12"
   },
   "devDependencies": {
+    "@citronhud/contracts": "workspace:*",
+    "@citronhud/gsi": "workspace:*",
     "@citronhud/overlay": "workspace:*",
+    "@citronhud/theme": "workspace:*",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "@types/adm-zip": "^0.5.7",

@@ -8,6 +8,9 @@ files:
   - out/**/*
   - package.json
   - '!**/*.map'
+  - '!**/.turbo'
+  - '!**/.turbo/**'
+  - '!**/*.log'
 
 # L'overlay compilé et les images de radar sont copiés hors du bundle : le
 # serveur local les sert à OBS en fichiers statiques.

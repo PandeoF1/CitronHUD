@@ -8,7 +8,7 @@ out/
 build/
 *.tsbuildinfo
 .turbo/
-
+apps/client/release
 # env
 .env
 .env.local
