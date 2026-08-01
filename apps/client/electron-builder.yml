@@ -50,5 +50,5 @@ linux:
 # Canal de mise à jour lu par electron-updater.
 publish:
   provider: github
-  owner: citron-esport
-  repo: citronhud
+  owner: PandeoF1
+  repo: CitronHUD

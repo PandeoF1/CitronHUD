@@ -11,9 +11,9 @@
     "start": "electron-vite preview",
     "typecheck": "tsc --noEmit -p tsconfig.node.json --composite false && tsc --noEmit -p tsconfig.web.json --composite false",
     "postinstall": "electron-builder install-app-deps",
-    "package:win": "electron-vite build && electron-builder --win",
-    "package:linux": "electron-vite build && electron-builder --linux",
-    "package:mac": "electron-vite build && electron-builder --mac"
+    "package:win": "electron-vite build && electron-builder --win --publish never",
+    "package:linux": "electron-vite build && electron-builder --linux --publish never",
+    "package:mac": "electron-vite build && electron-builder --mac --publish never"
   },
   "dependencies": {
     "adm-zip": "^0.5.16",
