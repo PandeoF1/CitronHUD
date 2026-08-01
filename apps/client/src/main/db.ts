@@ -1,5 +1,6 @@
 import Database from 'better-sqlite3'
-import type { Player, Team } from '@citronhud/contracts'
+import type { Highlight, Player, RecordBroken, Team } from '@citronhud/contracts'
+import type { KnownRecord } from '@citronhud/gsi'
 import { databasePath } from './paths'
 
 /**
@@ -122,6 +123,65 @@ export function loadRoster(): { teams: Map<string, Team>; players: Map<string, P
   }
 
   return { teams, players }
+}
+
+/**
+ * Mémorise un record battu.
+ *
+ * Sans cette trace, le moteur repart de zéro à chaque lancement et réannonce à
+ * l'antenne des records déjà tombés la veille. Le serveur reste la référence
+ * quand il répond ; cette table prend le relais hors ligne et au démarrage,
+ * avant la première synchronisation.
+ */
+export function saveRecord(record: RecordBroken): void {
+  getDb()
+    .prepare(
+      `INSERT INTO records (metric, scope, steam_id, value, payload, updated_at)
+       VALUES (?, ?, ?, ?, ?, ?)
+       ON CONFLICT(metric, scope, steam_id)
+       DO UPDATE SET value = excluded.value,
+                     payload = excluded.payload,
+                     updated_at = excluded.updated_at`
+    )
+    .run(
+      record.metric,
+      record.scope,
+      record.steamId ?? '',
+      record.value,
+      JSON.stringify(record),
+      now()
+    )
+}
+
+/** Records de référence, pour amorcer le moteur au démarrage. */
+export function loadKnownRecords(): KnownRecord[] {
+  const rows = getDb().prepare('SELECT metric, scope, steam_id, value FROM records').all() as Array<{
+    metric: string
+    scope: string
+    steam_id: string | null
+    value: number
+  }>
+
+  return rows.map((row) => ({
+    metric: row.metric as KnownRecord['metric'],
+    scope: row.scope as KnownRecord['scope'],
+    // La colonne stocke '' plutôt que NULL pour rester dans la clé primaire ;
+    // le moteur, lui, attend `null` pour une portée sans détenteur.
+    holderKey: row.steam_id ? row.steam_id : null,
+    value: row.value
+  }))
+}
+
+/** Journalise un temps fort et, s'il existe, le chemin de son clip. */
+export function saveHighlight(highlight: Highlight, clipPath: string | null = null): void {
+  getDb()
+    .prepare(
+      `INSERT INTO highlights (id, payload, clip_path, created_at)
+       VALUES (?, ?, ?, ?)
+       ON CONFLICT(id) DO UPDATE SET payload = excluded.payload,
+                                     clip_path = excluded.clip_path`
+    )
+    .run(highlight.id, JSON.stringify(highlight), clipPath, now())
 }
 
 /** Ajoute une entrée à la file d'envoi. */

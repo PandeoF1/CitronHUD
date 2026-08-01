@@ -18,7 +18,14 @@ import { ObsController } from './obs'
 import { CaptureManager } from './capture'
 import { SyncService } from './sync'
 import { prepareClip, pruneClips } from './clips'
-import { enqueue, closeDb, loadRoster } from './db'
+import {
+  enqueue,
+  closeDb,
+  loadRoster,
+  loadKnownRecords,
+  saveHighlight,
+  saveRecord
+} from './db'
 import { getClientSettings, getHudConfig, updateClientSettings, updateHudConfig } from './settings'
 import { getMatch, resetMatch, setSideMode, setTeamSlot, swapTeamSlots, updateMatch } from './match'
 import { findSteamPath, installGsiConfig, isGsiInstalled } from './steam'
@@ -32,6 +39,16 @@ import { setupAppUpdater, syncOverlayBundle } from './updater'
  * décider QUAND les choses arrivent — notamment la seule décision éditoriale du
  * client : à quel moment un replay peut passer à l'antenne.
  */
+
+/*
+ * Nom fixé avant toute lecture de chemin.
+ *
+ * `app.getPath('userData')` le résout à la première invocation et le mémorise.
+ * Sans cette ligne, les données non empaquetées atterrissent dans un dossier
+ * « Electron » générique, partagé avec toute autre application lancée de la
+ * même façon : base et réglages du client s'y mélangeraient.
+ */
+app.setName('CitronHUD')
 
 /** Sans trame pendant ce délai, on considère CS2 fermé ou en pause. */
 const GSI_STALE_MS = 6000
@@ -105,6 +122,7 @@ function drainReplayQueue(state: HudState | null): void {
  */
 async function handleHighlight(seed: Highlight): Promise<void> {
   server.broadcastHighlight(seed)
+  saveHighlight(seed)
   enqueue('highlight', seed)
 
   const config = getHudConfig()
@@ -117,6 +135,9 @@ async function handleHighlight(seed: Highlight): Promise<void> {
   const clip = await prepareClip(raw.path, seed, settings.capture.trimToWindow)
   if (!clip) return
 
+  // Le clip n'existe qu'après coup : on complète l'entrée déjà journalisée
+  // plutôt que d'attendre la vidéo pour écrire quoi que ce soit.
+  saveHighlight(seed, clip.path)
   pruneClips(settings.capture.keepLocalClips)
   replayQueue.push({
     highlight: seed,
@@ -142,6 +163,7 @@ function handleGsiFrame(payload: unknown): void {
 
   for (const record of tick.records) {
     server.broadcastRecord(record)
+    saveRecord(record)
     enqueue('record', record)
   }
 
@@ -226,6 +248,21 @@ function createWindow(): void {
   else void window.loadFile(join(__dirname, '../renderer/index.html'))
 }
 
+/** Exécute une étape non critique du démarrage sans pouvoir le faire échouer. */
+function optional(label: string, step: () => unknown): void {
+  try {
+    void Promise.resolve(step()).catch((error: unknown) => report(label, error))
+  } catch (error) {
+    report(label, error)
+  }
+}
+
+function report(label: string, error: unknown): void {
+  const message = error instanceof Error ? error.message : String(error)
+  console.error(`[main] ${label} : ${message}`)
+  window?.webContents.send('notice', `${label} indisponible : ${message}`)
+}
+
 async function bootstrap(): Promise<void> {
   const settings = getClientSettings()
   const config = getHudConfig()
@@ -233,6 +270,9 @@ async function bootstrap(): Promise<void> {
   engine = new CitronEngine(config, getMatch().sides)
   engine.setMatch(getMatch())
   engine.setRoster(loadRoster())
+  // Amorçage depuis le cache local : le serveur écrasera ces valeurs à la
+  // première synchronisation, mais l'antenne peut commencer avant.
+  engine.loadRecords(loadKnownRecords())
 
   server = new LocalServer({
     onGsiFrame: handleGsiFrame,
@@ -277,25 +317,34 @@ async function bootstrap(): Promise<void> {
   void obs.connect()
   void capture.evaluate()
 
-  // Installation du GSI au premier lancement, sans rien demander.
-  if (!isGsiInstalled(settings.hudPort, settings.steamPath)) {
+  /*
+   * Ce qui suit est du confort, pas du direct : le HUD est déjà servi et le
+   * flux GSI déjà accepté. Un Steam introuvable ou un serveur de mises à jour
+   * muet doit se signaler dans le panneau, jamais interrompre le démarrage.
+   */
+  optional('Installation du GSI', () => {
+    if (isGsiInstalled(settings.hudPort, settings.steamPath)) return
     const result = installGsiConfig(settings.hudPort, settings.steamPath)
     updateClientSettings({
       gsiInstalled: result.ok,
       steamPath: settings.steamPath ?? findSteamPath()
     })
     window?.webContents.send('notice', result.message)
-  }
-
-  setupAppUpdater({
-    onStatus: (message) => window?.webContents.send('notice', message),
-    onOverlayUpdated: () => server.reloadOverlays()
   })
 
-  void syncOverlayBundle(app.getVersion(), {
-    onStatus: (message) => window?.webContents.send('notice', message),
-    onOverlayUpdated: () => server.reloadOverlays()
-  })
+  optional('Mises à jour', () =>
+    setupAppUpdater({
+      onStatus: (message) => window?.webContents.send('notice', message),
+      onOverlayUpdated: () => server.reloadOverlays()
+    })
+  )
+
+  optional('Bundle overlay', () =>
+    syncOverlayBundle(app.getVersion(), {
+      onStatus: (message) => window?.webContents.send('notice', message),
+      onOverlayUpdated: () => server.reloadOverlays()
+    })
+  )
 
   watchStaleness()
 }

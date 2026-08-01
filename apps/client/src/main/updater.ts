@@ -1,3 +1,4 @@
+import { app } from 'electron'
 import { autoUpdater } from 'electron-updater'
 import AdmZip from 'adm-zip'
 import { createWriteStream, existsSync } from 'node:fs'
@@ -27,6 +28,14 @@ export interface UpdaterEvents {
 }
 
 export function setupAppUpdater(events: UpdaterEvents): void {
+  /*
+   * Hors installation empaquetée il n'existe ni version applicative valable ni
+   * canal de publication : le seul accès au module `autoUpdater` lève alors
+   * ERR_UPDATER_INVALID_VERSION. Sortir avant l'import évite de faire échouer
+   * tout le démarrage pour une fonctionnalité qui n'a de sens qu'en production.
+   */
+  if (!app.isPackaged) return
+
   const settings = getClientSettings()
   if (!settings.autoUpdate) return
 

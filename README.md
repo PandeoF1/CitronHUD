@@ -90,11 +90,19 @@ docker compose up -d
 - **`apps/overlay`** — **compile et build** (`vite build` OK, 349 ko / 107 ko gzip). Matchbar, pépin signature, listes joueurs, panneau observé, killfeed, radar canvas, scène de replay, bandeaux de record, champ de zestes.
 - **`infra`** — docker-compose, Caddyfile, `.env.example`.
 
-### Client Electron — modules écrits, pas encore assemblés
+- **`apps/client`** — **démarre et fonctionne**. Vérifié bout en bout contre le
+  client réel, flux GSI simulé injecté sur `POST /gsi`, overlay branché en
+  socket.io :
 
-Écrits : `paths`, `settings`, `db` (cache + outbox), `steam` (détection + install GSI), `obs` (découverte du mot de passe, source navigateur, tampon de replay), `server` (HTTP + GSI + socket.io).
-
-**Reste à faire** : `index.ts` (cycle de vie), `ipc.ts`, `sync.ts` (roster + vidage de l'outbox), `capture/` (OBS prioritaire + repli `desktopCapturer`), `clips.ts` (découpe ffmpeg), `updater.ts` (electron-updater + bundle overlay), le preload et le panneau de contrôle React. Le client **ne compile pas encore** tant que `index.ts` n'existe pas.
+  | Vérification                            | Résultat                                                                     |
+  | --------------------------------------- | ---------------------------------------------------------------------------- |
+  | Démarrage                               | serveur local sur `:3477`, `/health` et `/overlay/` répondent, aucune erreur |
+  | Ingestion GSI                           | 401 trames acceptées, 401 états rediffusés à l'overlay                       |
+  | Killfeed reconstruit                    | 11 kills, avec arme, camp et côté d'écran corrects                           |
+  | Temps forts                             | ace détecté à la clôture de manche, 5 victimes reconstituées, arme AWP        |
+  | Records                                 | annoncés au dépassement, une seule fois par match                            |
+  | Persistance locale                      | records et temps forts écrits en base ; outbox empilée hors ligne            |
+  | Mémoire entre sessions                  | après redémarrage, un record déjà tombé n'est pas réannoncé                  |
 
 ### Serveur Next.js — non commencé
 
@@ -102,4 +110,12 @@ Schéma Drizzle, better-auth, API v1, UI admin CRUD, upload S3.
 
 ### Non vérifié
 
-Le rendu visuel de l'overlay n'a pas été contrôlé à l'écran : aucun navigateur n'est installé dans cet environnement. À valider via `pnpm dev:overlay` puis `?demo=1`.
+- **Le rendu visuel de l'overlay** n'a pas été contrôlé à l'écran : aucun
+  navigateur n'est installé dans cet environnement. À valider via
+  `pnpm dev:overlay` puis `?demo=1`.
+- **La capture vidéo elle-même.** La chaîne complète a été exercée jusqu'au
+  point de capture, où le client conclut correctement qu'aucune source n'est
+  disponible : OBS n'est pas installé ici et `desktopCapturer` n'a pas d'écran à
+  filmer. Le temps fort est alors journalisé et diffusé sans clip — le
+  comportement prévu — mais le montage et la lecture du replay demandent une
+  machine avec OBS pour être confirmés.

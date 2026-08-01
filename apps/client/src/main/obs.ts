@@ -1,4 +1,9 @@
-import OBSWebSocket from 'obs-websocket-js'
+// Import nommé et non par défaut : le paquet est en `type: module` avec une
+// carte d'exports qui renvoie vers un bundle CJS sous la condition `require`.
+// Le process principal étant émis en CJS, un import par défaut se résout au
+// namespace complet du module et non à la classe — d'où un « is not a
+// constructor » au démarrage.
+import { OBSWebSocket } from 'obs-websocket-js'
 import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { homedir, platform } from 'node:os'
