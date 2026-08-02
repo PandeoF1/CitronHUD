@@ -5,6 +5,7 @@ import { Roster } from './components/Roster'
 import { ObservedPanel } from './components/ObservedPanel'
 import { KillFeed } from './components/KillFeed'
 import { Radar } from './components/Radar'
+import { RoundReview } from './components/RoundReview'
 import { ReplayStage } from './components/ReplayStage'
 import { RecordToasts } from './components/RecordToasts'
 import { ZestField } from './components/ZestField'
@@ -88,12 +89,17 @@ export function App() {
 
           <Radar
             players={hud.players}
+            grenades={hud.grenades}
             mapName={hud.map?.name ?? null}
             config={config}
             bombPosition={hud.bomb?.position ?? null}
           />
 
           <KillFeed kills={kills} config={config} />
+
+          {hud.roundReview && (
+            <RoundReview review={hud.roundReview} teams={hud.teams} config={config} />
+          )}
 
           {config.showObservedPanel && hud.observed && (
             <ObservedPanel player={hud.observed} showAvatar={config.showPlayerAvatars} />

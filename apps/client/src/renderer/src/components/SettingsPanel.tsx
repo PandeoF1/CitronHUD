@@ -124,6 +124,18 @@ export function SettingsPanel({ settings, playerCount, onChange, onNotice }: Set
           >
             Réinstaller la configuration GSI
           </button>
+          {/*
+            Les fonds de radar sont extraits de l'installation CS2 au premier
+            lancement, puis seulement quand le jeu est mis à jour. Ce bouton
+            couvre le cas où le chemin de Steam vient d'être corrigé ci-dessus :
+            sans lui, il faudrait relancer le client pour voir les cartes.
+          */}
+          <button
+            className="btn btn--ghost"
+            onClick={() => void window.citron.extractRadars().then((r) => onNotice(r.message))}
+          >
+            Ré-extraire les radars
+          </button>
           <span className="muted">Port local : {settings.hudPort}</span>
         </div>
       </section>

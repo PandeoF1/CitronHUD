@@ -189,6 +189,94 @@ export const killEventSchema = z.object({
 })
 export type KillEvent = z.infer<typeof killEventSchema>
 
+/**
+ * Un utilitaire visible sur le radar.
+ *
+ * Disponible seulement si `allgrenades "1"` figure dans le fichier GSI et si le
+ * flux vient d'un spectateur. Le champ reste un tableau vide sinon : l'overlay
+ * n'a pas à distinguer « pas d'utilitaire en l'air » de « bloc absent ».
+ */
+export const hudGrenadeSchema = z.object({
+  id: z.string(),
+  type: z.enum(['smoke', 'flash', 'frag', 'decoy', 'incendiary']),
+  ownerSteamId: z.string().nullable(),
+  /** Camp du lanceur, pour colorer la traînée. Null si le lanceur est inconnu. */
+  side: sideSchema.nullable(),
+  position: z.tuple([z.number(), z.number(), z.number()]).nullable(),
+  /** Vrai quand l'effet occupe le terrain : fumée déployée, nappe qui brûle. */
+  active: z.boolean(),
+  /** Rayon de la zone en unités monde, 0 tant que le projectile vole. */
+  radius: z.number(),
+  /** Rayon d'un foyer incendiaire, en unités monde. */
+  flameRadius: z.number(),
+  flames: z.array(z.tuple([z.number(), z.number(), z.number()])),
+  /** Positions successives depuis le lancer, les plus anciennes en tête. */
+  trail: z.array(z.tuple([z.number(), z.number(), z.number()]))
+})
+export type HudGrenade = z.infer<typeof hudGrenadeSchema>
+
+export const roundEndReasonSchema = z.enum([
+  'elimination',
+  'bomb',
+  'defuse',
+  'time',
+  'rescue',
+  'unknown'
+])
+export type RoundEndReason = z.infer<typeof roundEndReasonSchema>
+
+/**
+ * Bilan figé d'une manche.
+ *
+ * Capturé au passage en phase « over » plutôt que reconstruit à l'affichage :
+ * les compteurs par manche du GSI repartent à zéro dès le temps de gel suivant,
+ * et un bilan calculé trop tard serait vide.
+ */
+export const roundReviewSchema = z.object({
+  round: z.number().int(),
+  /** Camp vainqueur, et le côté d'écran correspondant. */
+  winnerSide: sideSchema,
+  winnerSlot: slotSchema,
+  reason: roundEndReasonSchema,
+  /** Score après la manche, orienté écran. */
+  score: z.object({ left: z.number().int(), right: z.number().int() }),
+  mvp: z
+    .object({
+      steamId: z.string(),
+      name: z.string(),
+      avatarUrl: z.string().nullable(),
+      side: sideSchema,
+      slot: slotSchema,
+      kills: z.number().int(),
+      headshots: z.number().int(),
+      damage: z.number().int(),
+      /** Phrase courte expliquant la sélection, ex. « 3 frags ». */
+      reason: z.string()
+    })
+    .nullable(),
+  /** Contribution de chaque joueur sur la seule manche écoulée. */
+  players: z.array(
+    z.object({
+      steamId: z.string(),
+      name: z.string(),
+      avatarUrl: z.string().nullable(),
+      side: sideSchema,
+      slot: slotSchema,
+      survived: z.boolean(),
+      kills: z.number().int(),
+      headshots: z.number().int(),
+      damage: z.number().int(),
+      /** Cumul de carte, pour le tableau complet. */
+      totalKills: z.number().int(),
+      totalAssists: z.number().int(),
+      totalDeaths: z.number().int(),
+      adr: z.number(),
+      headshotPercent: z.number()
+    })
+  )
+})
+export type RoundReview = z.infer<typeof roundReviewSchema>
+
 export const hudStateSchema = z.object({
   /** Faux quand aucune frame GSI n'est arrivée depuis le seuil de coupure. */
   live: z.boolean(),
@@ -206,6 +294,9 @@ export const hudStateSchema = z.object({
   players: z.array(hudPlayerSchema),
   observed: hudPlayerSchema.nullable(),
   killfeed: z.array(killEventSchema),
+  grenades: z.array(hudGrenadeSchema).default([]),
+  /** Bilan de la dernière manche, présent tant qu'il reste pertinent à l'écran. */
+  roundReview: roundReviewSchema.nullable().default(null),
 
   event: z.object({
     name: z.string(),

@@ -44,6 +44,9 @@ export interface SimulatedFrameSpec {
     player?: string
   } | null
   observed?: string
+  /** Issues des manches déjà jouées, indexées à partir de « 1 ». */
+  roundWins?: Record<string, string>
+  grenades?: Record<string, import('./types').RawGrenade>
   players: SimulatedPlayerSpec[]
 }
 
@@ -119,7 +122,7 @@ export function buildFrame(spec: SimulatedFrameSpec): RawGsiPayload {
       team_ct: { score: spec.ctScore ?? 0, consecutive_round_losses: 0, timeouts_remaining: 4 },
       team_t: { score: spec.tScore ?? 0, consecutive_round_losses: 0, timeouts_remaining: 4 },
       num_matches_to_win_series: 1,
-      round_wins: {}
+      round_wins: spec.roundWins ?? {}
     },
     round: {
       phase: phase === 'freezetime' ? 'freezetime' : phase === 'over' ? 'over' : 'live',
@@ -131,6 +134,8 @@ export function buildFrame(spec: SimulatedFrameSpec): RawGsiPayload {
     },
     allplayers
   }
+
+  if (spec.grenades) payload.grenades = spec.grenades
 
   if (observed) {
     payload.player = { steamid: observed, spectarget: observed, observer_slot: 0 }

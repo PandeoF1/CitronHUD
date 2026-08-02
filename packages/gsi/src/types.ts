@@ -105,6 +105,26 @@ export interface RawPhaseCountdowns {
   phase_ends_in?: string
 }
 
+/**
+ * Un projectile en vol ou un effet au sol.
+ *
+ * Bloc disponible uniquement avec `allgrenades "1"` dans le fichier GSI, et
+ * uniquement en spectateur. CS2 réutilise les identifiants numériques après
+ * quelques manches : le suivi des traînées doit donc se réinitialiser à chaque
+ * manche plutôt que de faire confiance à l'unicité des clés.
+ */
+export interface RawGrenade {
+  owner?: string
+  position?: string
+  velocity?: string
+  lifetime?: string
+  type?: string
+  /** Fumigènes : secondes écoulées depuis le déploiement complet. */
+  effecttime?: string
+  /** Incendiaires : une entrée par foyer, `flame_0` → « x, y, z ». */
+  flames?: Record<string, string>
+}
+
 export interface RawGsiPayload {
   provider?: RawProvider
   map?: RawMap
@@ -113,7 +133,7 @@ export interface RawGsiPayload {
   allplayers?: Record<string, RawPlayer>
   bomb?: RawBomb
   phase_countdowns?: RawPhaseCountdowns
-  grenades?: Record<string, unknown>
+  grenades?: Record<string, RawGrenade>
   auth?: Record<string, string>
   previously?: unknown
   added?: unknown
@@ -167,6 +187,22 @@ export interface NormalizedPlayer {
   alive: boolean
 }
 
+export type GrenadeType = 'smoke' | 'flash' | 'frag' | 'decoy' | 'incendiary'
+
+export interface NormalizedGrenade {
+  id: string
+  type: GrenadeType
+  ownerSteamId: string | null
+  position: Vec3 | null
+  velocity: Vec3 | null
+  /** Secondes écoulées depuis le lancer. */
+  lifetime: number
+  /** Fumigènes : secondes depuis le déploiement, 0 tant que le projectile vole. */
+  effectTime: number
+  /** Incendiaires : un point par foyer. */
+  flames: Vec3[]
+}
+
 export type RoundPhase =
   'warmup' | 'freezetime' | 'live' | 'over' | 'intermission' | 'timeout' | 'gameover' | 'unknown'
 
@@ -204,6 +240,7 @@ export interface NormalizedFrame {
   } | null
   players: NormalizedPlayer[]
   playersBySteamId: Map<string, NormalizedPlayer>
+  grenades: NormalizedGrenade[]
   /** SteamID du joueur actuellement suivi par la caméra spectateur. */
   observedSteamId: string | null
 }

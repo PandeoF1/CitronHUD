@@ -54,12 +54,12 @@ export function activeOverlayDir(): string {
   return existsSync(join(downloaded, 'index.html')) ? downloaded : bundledOverlayDir()
 }
 
-/** Images de radar, livrées avec l'application. */
-export const radarsDir = (): string => {
-  const candidates = [
-    join(app.getAppPath(), 'resources/radars'),
-    join(process.resourcesPath ?? '', 'radars'),
-    join(__dirname, '../../resources/radars')
-  ]
-  return candidates.find((candidate) => existsSync(candidate)) ?? candidates[candidates.length - 1]!
-}
+/**
+ * Radars extraits de l'installation CS2 locale.
+ *
+ * Ils ne sont pas livrés avec l'application : les images d'overview
+ * appartiennent à Valve, et une copie figée se périmerait au premier
+ * remaniement de carte. On les tire du jeu de l'utilisateur, ce qui donne aussi
+ * les cartes de l'atelier et les variantes d'étage.
+ */
+export const radarsDir = (): string => ensure(join(userDataDir(), 'radars'))

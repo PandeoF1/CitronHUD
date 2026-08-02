@@ -8,17 +8,21 @@ import './styles/overlay.css'
 /**
  * Point d'entrée de l'overlay.
  *
- * Deux modes de démarrage :
- *  - normal    : on se branche au client local, qui pousse l'état ;
- *  - `?demo=1` : on charge une scène fabriquée, pour travailler l'apparence
- *                sans lancer CS2. Un HUD ne se dessine pas à vide, et exiger
- *                une partie en cours pour ajuster un espacement est le meilleur
- *                moyen de ne jamais l'ajuster.
+ * Trois modes de démarrage :
+ *  - normal         : on se branche au client local, qui pousse l'état ;
+ *  - `?demo=1`      : on charge une scène fabriquée, pour travailler l'apparence
+ *                     sans lancer CS2. Un HUD ne se dessine pas à vide, et exiger
+ *                     une partie en cours pour ajuster un espacement est le
+ *                     meilleur moyen de ne jamais l'ajuster ;
+ *  - `?demo=review` : la même scène, en fin de manche. Le bilan ne dure que
+ *                     quelques secondes en jeu, ce qui laisse trop peu de temps
+ *                     pour en régler la mise en page.
  */
 const params = new URLSearchParams(window.location.search)
+const demo = params.get('demo')
 
-if (params.get('demo') === '1') {
-  loadDemoScene()
+if (demo === '1' || demo === 'review') {
+  loadDemoScene({ roundReview: demo === 'review' })
 } else {
   connectOverlay()
 }

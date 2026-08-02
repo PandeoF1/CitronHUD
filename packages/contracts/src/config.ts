@@ -21,6 +21,17 @@ export const hudConfigSchema = z.object({
 
   showRadar: z.boolean().default(true),
   radarScale: z.number().min(0.6).max(1.8).default(1),
+  /** Traînées d'utilitaires, fumées et nappes de feu sur le radar. */
+  showGrenades: z.boolean().default(true),
+  /**
+   * Lissage des positions du radar.
+   *
+   * Le GSI envoie au mieux une dizaine de trames par seconde ; sans
+   * interpolation, les pastilles avancent par saccades bien visibles à côté du
+   * jeu qui tourne à 60 images par seconde et plus. Désactivable pour les
+   * machines qui n'ont pas de marge côté navigateur.
+   */
+  smoothRadar: z.boolean().default(true),
   showKillfeed: z.boolean().default(true),
   showObservedPanel: z.boolean().default(true),
   showPlayerAvatars: z.boolean().default(true),
@@ -50,6 +61,17 @@ export const hudConfigSchema = z.object({
   replayOnlyBetweenRounds: z.boolean().default(true),
 
   showRecordToasts: z.boolean().default(true),
+
+  /** Bilan de fin de manche : vainqueur, MVP, tableau des deux équipes. */
+  showRoundReview: z.boolean().default(true),
+  /**
+   * Durée d'affichage du bilan, en millisecondes.
+   *
+   * La phase « over » dure environ sept secondes en compétitif ; au-delà, le
+   * bilan mordrait sur les achats du temps de gel, qui sont eux aussi du
+   * contenu à commenter.
+   */
+  roundReviewMs: z.number().int().min(0).max(15_000).default(5_000),
 
   /** Décalage vertical global, pour dégager une bannière de chaîne. */
   offsetY: z.number().int().min(-200).max(200).default(0),

@@ -1,6 +1,7 @@
 import type {
   Bomb,
   HudConfig,
+  HudGrenade,
   HudPlayer,
   HudState,
   KillEvent,
@@ -16,6 +17,9 @@ import type {
 } from '@citronhud/contracts'
 import { normalizeFrame } from './frame'
 import { KillFeedEngine } from './killfeed'
+import { CoachDetector } from './coaches'
+import { GrenadeTracker } from './grenades'
+import { RoundReviewTracker } from './rounds'
 import { SideDetector } from './sides'
 import { HighlightDetector, type HighlightSeed } from './highlights'
 import { MatchStatsTracker } from './stats'
@@ -60,12 +64,23 @@ export class CitronEngine {
   private readonly highlights = new HighlightDetector()
   private readonly stats = new MatchStatsTracker()
   private readonly records = new RecordTracker()
+  private readonly coaches = new CoachDetector()
+  private readonly grenades = new GrenadeTracker()
+  private readonly reviews = new RoundReviewTracker()
   private readonly detector: SideDetector
 
   private roster: EngineRoster = EMPTY_ROSTER
   private match: MatchSetup | null = null
   private config: HudConfig
   private lastFrame: NormalizedFrame | null = null
+  /**
+   * Utilitaires de la dernière trame ingérée.
+   *
+   * Mémorisés plutôt que recalculés dans `buildState` : celui-ci est aussi
+   * appelé par `markStale`, et faire avancer le suivi des traînées depuis un
+   * chemin qui ne consomme aucune trame allongerait les traces à l'infini.
+   */
+  private liveGrenades: HudGrenade[] = []
 
   /** Verrouillé au début du désamorçage : après coup l'information disparaît. */
   private defuseTooLate = false
@@ -88,6 +103,9 @@ export class CitronEngine {
       this.highlights.reset()
       this.stats.reset()
       this.records.reset()
+      this.coaches.reset()
+      this.grenades.reset()
+      this.reviews.reset()
     }
   }
 
@@ -137,6 +155,18 @@ export class CitronEngine {
     this.stats.ingest(frame)
     if (frame.phase === 'gameover') this.stats.finalize()
 
+    this.coaches.ingest(frame)
+    this.liveGrenades = this.grenades.ingest(
+      frame,
+      (steamId) => frame.playersBySteamId.get(steamId)?.side ?? null
+    )
+    this.reviews.ingest(frame, {
+      slotOf: this.detector.slotOf,
+      rosterOf: (steamId) => this.roster.players.get(steamId),
+      stats: this.stats,
+      hidden: this.hiddenSteamIds(frame)
+    })
+
     const kills = this.killfeed.ingest(frame, this.detector.slotOf)
     const highlights = this.highlights.ingest(frame, kills, { slotOf: this.detector.slotOf })
     const records = this.config.showRecordToasts
@@ -157,6 +187,21 @@ export class CitronEngine {
   /* ---------------------------------------------------------------------
    * Construction de l'état
    * ------------------------------------------------------------------ */
+
+  /**
+   * SteamIDs à ne pas montrer.
+   *
+   * Deux sources : le drapeau `isCoach` du roster serveur, qui fait autorité
+   * quand il est renseigné, et la détection automatique pour les matchs joués
+   * sans configuration préalable — le cas nominal côté streamer.
+   */
+  private hiddenSteamIds(frame: NormalizedFrame): ReadonlySet<string> {
+    const hidden = new Set(this.coaches.current)
+    for (const player of frame.players) {
+      if (this.roster.players.get(player.steamId)?.isCoach) hidden.add(player.steamId)
+    }
+    return hidden
+  }
 
   private playerTeamIndex(): ReadonlyMap<string, string> {
     const index = new Map<string, string>()
@@ -206,8 +251,9 @@ export class CitronEngine {
       right: this.resolveTeam('right', rightSide, frame)
     }
 
+    const hidden = this.hiddenSteamIds(frame)
     const players = frame.players
-      .filter((player) => !this.roster.players.get(player.steamId)?.isCoach)
+      .filter((player) => !hidden.has(player.steamId))
       .map((player) => this.resolvePlayer(player, frame))
 
     const observed = players.find((player) => player.isObserved) ?? null
@@ -235,6 +281,8 @@ export class CitronEngine {
       players,
       observed,
       killfeed: [...this.killfeed.recent],
+      grenades: this.config.showGrenades ? this.liveGrenades : [],
+      roundReview: this.config.showRoundReview ? this.reviews.current : null,
       event: this.match?.event ?? { name: '', stage: '' },
       series: this.resolveSeries(),
       sides: {

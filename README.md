@@ -85,9 +85,9 @@ docker compose up -d
 ### Terminé et vérifié
 
 - **`packages/contracts`** — schémas complets (roster, match, état HUD, temps forts, records, config, socket, API).
-- **`packages/gsi`** — moteur complet. **25 tests passent** (`pnpm --filter @citronhud/gsi test`) sur la reconstruction du killfeed et la détection des camps.
+- **`packages/gsi`** — moteur complet. **45 tests passent** (`pnpm --filter @citronhud/gsi test`) : killfeed reconstruit, détection des camps, détection des coachs, suivi des utilitaires, bilan de fin de manche.
 - **`packages/theme`** — tokens + CSS généré, polices Fontsource auto-hébergées.
-- **`apps/overlay`** — **compile et build** (`vite build` OK, 349 ko / 107 ko gzip). Matchbar, pépin signature, listes joueurs, panneau observé, killfeed, radar canvas, scène de replay, bandeaux de record, champ de zestes.
+- **`apps/overlay`** — **compile, build et s'affiche correctement**. Matchbar, pépin signature, listes joueurs, panneau observé, killfeed, radar canvas, bilan de fin de manche, scène de replay, bandeaux de record, champ de zestes. **13 tests** sur la projection radar et l'interpolation.
 - **`infra`** — docker-compose, Caddyfile, `.env.example`.
 
 - **`apps/client`** — **démarre et fonctionne**. Vérifié bout en bout contre le
@@ -103,6 +103,21 @@ docker compose up -d
   | Records                                 | annoncés au dépassement, une seule fois par match                            |
   | Persistance locale                      | records et temps forts écrits en base ; outbox empilée hors ligne            |
   | Mémoire entre sessions                  | après redémarrage, un record déjà tombé n'est pas réannoncé                  |
+  | Extraction des radars                   | 18 cartes tirées du VPK de CS2 en 1,7 s, aucune ignorée, servies en HTTP     |
+  | Détection des coachs                    | équipe à six, sixième homme masqué, dix joueurs affichés                     |
+  | Utilitaires                             | fumée déployée + nappe de feu + traînée de six points, camps corrects        |
+  | Bilan de fin de manche                  | vainqueur, cause, MVP et dix lignes de tableau, figés à la fin de la manche  |
+  | Rendu de l'overlay                      | capturé à l'écran ; fond de carte, utilitaires et bilan conformes            |
+
+### Fonds de radar
+
+Les images ne sont pas livrées avec l'application : elles sont **extraites de
+l'installation CS2 du poste** au premier lancement (`pak01_dir.vpk` → `.vtex_c`
+→ LZ4 → PNG), avec la géométrie de projection officielle
+(`resource/overviews/*.txt`). Trois raisons : elles appartiennent à Valve, une
+copie figée se périme dès qu'une carte est remaniée, et les variantes d'étage
+(Nuke, Vertigo, Train) comme les cartes de l'atelier arrivent gratuitement.
+Le bouton « Ré-extraire les radars » du panneau force l'opération.
 
 ### Serveur Next.js — non commencé
 
@@ -110,9 +125,6 @@ Schéma Drizzle, better-auth, API v1, UI admin CRUD, upload S3.
 
 ### Non vérifié
 
-- **Le rendu visuel de l'overlay** n'a pas été contrôlé à l'écran : aucun
-  navigateur n'est installé dans cet environnement. À valider via
-  `pnpm dev:overlay` puis `?demo=1`.
 - **La capture vidéo elle-même.** La chaîne complète a été exercée jusqu'au
   point de capture, où le client conclut correctement qu'aucune source n'est
   disponible : OBS n'est pas installé ici et `desktopCapturer` n'a pas d'écran à

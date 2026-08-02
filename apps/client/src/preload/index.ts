@@ -52,6 +52,13 @@ const api = {
 
   installGsi: (): Promise<{ ok: boolean; path: string | null; message: string }> =>
     ipcRenderer.invoke('gsi:install'),
+  /** Ré-extrait les radars depuis l'installation CS2 locale. */
+  extractRadars: (): Promise<{
+    ok: boolean
+    message: string
+    extracted: number
+    skipped: string[]
+  }> => ipcRenderer.invoke('radars:extract'),
   selectDirectory: (): Promise<string | null> => ipcRenderer.invoke('dialog:selectDirectory'),
 
   testServer: (url: string, apiKey: string): Promise<{ ok: boolean; message: string }> =>

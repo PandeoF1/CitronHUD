@@ -29,6 +29,8 @@ import {
 import { getClientSettings, getHudConfig, updateClientSettings, updateHudConfig } from './settings'
 import { getMatch, resetMatch, setSideMode, setTeamSlot, swapTeamSlots, updateMatch } from './match'
 import { findSteamPath, installGsiConfig, isGsiInstalled } from './steam'
+import { extractRadars } from './radars'
+import { radarsDir } from './paths'
 import { setupAppUpdater, syncOverlayBundle } from './updater'
 
 /**
@@ -332,6 +334,15 @@ async function bootstrap(): Promise<void> {
     window?.webContents.send('notice', result.message)
   })
 
+  optional('Extraction des radars', () => {
+    const result = extractRadars(radarsDir(), { steamPath: settings.steamPath })
+    if (result.skipped.length > 0) {
+      console.warn('[radars] ignorés :', result.skipped.join(', '))
+    }
+    // Silencieux quand rien n'a changé : le message n'apprendrait rien.
+    if (!result.ok || result.extracted > 0) window?.webContents.send('notice', result.message)
+  })
+
   optional('Mises à jour', () =>
     setupAppUpdater({
       onStatus: (message) => window?.webContents.send('notice', message),
@@ -443,6 +454,13 @@ function registerIpc(): void {
     const settings = getClientSettings()
     const result = installGsiConfig(settings.hudPort, settings.steamPath)
     updateClientSettings({ gsiInstalled: result.ok })
+    return result
+  })
+
+  ipcMain.handle('radars:extract', () => {
+    const settings = getClientSettings()
+    const result = extractRadars(radarsDir(), { steamPath: settings.steamPath, force: true })
+    if (result.ok) server.reloadOverlays()
     return result
   })
 

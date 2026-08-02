@@ -50,6 +50,20 @@ body {
   pointer-events: none;
 }
 
+/*
+ * Empilement vertical.
+ *
+ * Plusieurs encarts juxtaposent une vignette et une colonne de texte — bandeau
+ * de record, joueur de la manche. Leurs lignes sont des `span`, donc en ligne :
+ * sans cette classe elles se suivent sur une seule ligne au lieu de s'empiler.
+ */
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+  min-width: 0;
+}
+
 /* ==========================================================================
  * MATCHBAR — le quartier de citron, en haut au centre
  * ========================================================================== */
@@ -993,4 +1007,175 @@ body {
   color: var(--ink-pulp);
   max-width: 280px;
   line-height: 1.5;
+}
+
+/* ==========================================================================
+ * BILAN DE FIN DE MANCHE — centre
+ * ========================================================================== */
+
+/*
+ * Centré et volontairement large : le bilan n'apparaît qu'entre deux manches,
+ * quand plus rien ne se joue à l'écran. Il n'a donc à céder la place à aucun
+ * autre bloc, et gagne à être lisible d'un seul coup d'œil sur un flux compressé.
+ */
+.review {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  z-index: var(--layer-toast);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-4);
+  animation: review-in var(--dur-panel) var(--ease-squeeze) both;
+}
+
+@keyframes review-in {
+  from {
+    opacity: 0;
+    transform: translate(-50%, calc(-50% + 14px));
+  }
+}
+
+.review__head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--space-5);
+  padding: var(--space-4) var(--space-7);
+  --c-tl: var(--chamfer-md);
+  --c-br: var(--chamfer-md);
+  --face: var(--surface-flesh);
+  --edge-w: var(--edge-regular);
+  --edge-color: var(--brand-rind);
+}
+
+.review__round {
+  font-size: var(--hud-eyebrow-size);
+  font-weight: var(--hud-eyebrow-weight);
+  letter-spacing: var(--hud-eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--ink-rind-dim);
+}
+
+.review__winner {
+  font-size: 22px;
+  font-weight: 800;
+  font-stretch: 112%;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--brand-rind);
+}
+
+.review__reason {
+  font-size: 13px;
+  color: var(--ink-pulp);
+}
+
+.review__score {
+  font-family: var(--font-mono);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--ink-white);
+}
+
+.review__mvp {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-4) var(--space-6);
+  --c-tr: var(--chamfer-md);
+  --c-bl: var(--chamfer-md);
+  --face: var(--surface-husk);
+  --edge-w: var(--edge-hair);
+  --edge-color: var(--brand-zest);
+}
+
+.review__avatar {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  display: grid;
+  place-items: center;
+  font-size: 16px;
+  font-weight: 800;
+  color: var(--ink-pith);
+  background: var(--surface-seed);
+}
+
+.review__label {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--brand-zest);
+}
+
+.review__name {
+  font-size: 18px;
+  font-weight: 800;
+  color: var(--ink-white);
+}
+
+.review__detail {
+  font-size: 12px;
+  color: var(--ink-pulp);
+}
+
+.review__boards {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+}
+
+.review__board {
+  border-collapse: collapse;
+  padding: var(--space-3) var(--space-4);
+  --c-tl: var(--chamfer-sm);
+  --c-br: var(--chamfer-sm);
+  --face: var(--scrim-firm);
+  --edge-w: var(--edge-hair);
+  --edge-color: var(--surface-shell);
+  font-size: 12px;
+  color: var(--ink-pulp);
+}
+
+.review__board th {
+  padding: var(--space-2) var(--space-3);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--ink-rind-dim);
+  text-align: right;
+}
+
+.review__board th.review__team {
+  text-align: left;
+  color: var(--brand-rind);
+  min-width: 140px;
+}
+
+.review__board td {
+  padding: var(--space-2) var(--space-3);
+  text-align: right;
+  font-family: var(--font-mono);
+}
+
+.review__board td.review__player {
+  text-align: left;
+  font-family: var(--font-body);
+  font-weight: 600;
+  color: var(--ink-white);
+}
+
+/* Les éliminés en retrait : la colonne se lit alors comme le bilan humain
+ * de la manche, sans avoir à croiser avec le scoreboard vivant. */
+.review__row--dead {
+  opacity: 0.5;
+}
+
+.review__round-kills {
+  color: var(--brand-zest);
+  font-weight: 700;
 }

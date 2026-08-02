@@ -22,6 +22,49 @@ const CS2_CFG_RELATIVE = join(
   'cfg'
 )
 
+/**
+ * Sous WSL, Steam est presque toujours du côté Windows.
+ *
+ * Le système se présente comme Linux mais les disques hôtes sont montés sous
+ * `/mnt/<lettre>`. Sans ce détour, un développement sous WSL ne voit jamais le
+ * jeu — et c'est aussi le cas d'un streamer qui lancerait le client depuis WSL.
+ */
+function wslSteamPaths(): string[] {
+  let underWsl = false
+  try {
+    underWsl = readFileSync('/proc/version', 'utf8').toLowerCase().includes('microsoft')
+  } catch {
+    return []
+  }
+  if (!underWsl) return []
+
+  const paths: string[] = []
+  for (const drive of ['c', 'd', 'e', 'f', 'g']) {
+    paths.push(
+      `/mnt/${drive}/Program Files (x86)/Steam`,
+      `/mnt/${drive}/Program Files/Steam`,
+      `/mnt/${drive}/Steam`,
+      `/mnt/${drive}/SteamLibrary`
+    )
+  }
+  return paths
+}
+
+/**
+ * Traduit un chemin Windows en chemin lisible depuis le système courant.
+ *
+ * `libraryfolders.vdf` est écrit par Steam côté Windows : ses chemins sont en
+ * `D:\Jeux`. Sur Windows on les garde tels quels ; sous WSL il faut les faire
+ * passer par `/mnt/d/Jeux`, faute de quoi une bibliothèque secondaire — cas le
+ * plus fréquent pour CS2 — reste invisible.
+ */
+function toHostPath(raw: string): string {
+  if (platform() === 'win32') return raw
+  const match = /^([A-Za-z]):[\\/](.*)$/.exec(raw)
+  if (!match) return raw
+  return `/mnt/${match[1]!.toLowerCase()}/${match[2]!.replace(/\\/g, '/')}`
+}
+
 /** Emplacements par défaut de Steam, par système. */
 function defaultSteamPaths(): string[] {
   const home = homedir()
@@ -38,7 +81,8 @@ function defaultSteamPaths(): string[] {
       return [
         join(home, '.steam', 'steam'),
         join(home, '.local', 'share', 'Steam'),
-        join(home, '.var', 'app', 'com.valvesoftware.Steam', '.local', 'share', 'Steam')
+        join(home, '.var', 'app', 'com.valvesoftware.Steam', '.local', 'share', 'Steam'),
+        ...wslSteamPaths()
       ]
   }
 }
@@ -49,14 +93,14 @@ function defaultSteamPaths(): string[] {
  * Le VDF est un format maison de Valve ; on n'en extrait que les chemins, ce
  * qui ne justifie pas une dépendance de parsing complète.
  */
-function readLibraryFolders(steamPath: string): string[] {
+export function readLibraryFolders(steamPath: string): string[] {
   const vdf = join(steamPath, 'steamapps', 'libraryfolders.vdf')
   if (!existsSync(vdf)) return [steamPath]
 
   try {
     const content = readFileSync(vdf, 'utf8')
     const paths = [...content.matchAll(/"path"\s+"([^"]+)"/g)].map((match) =>
-      match[1]!.replace(/\\\\/g, '\\')
+      toHostPath(match[1]!.replace(/\\\\/g, '\\'))
     )
     return [steamPath, ...paths]
   } catch {
@@ -127,17 +171,23 @@ export const GSI_FILE_NAME = 'gamestate_integration_citronhud.cfg'
 /**
  * Contenu du fichier GSI.
  *
- * `throttle` à 0.1 s est le meilleur compromis : plus lent, le killfeed
- * reconstruit rate des kills simultanés ; plus rapide, CS2 renvoie des trames
- * identiques et on brûle du CPU pour rien.
+ * Trois réglages gouvernent la cadence, et c'est `buffer` qui décide de la
+ * fluidité du radar. Il demande à CS2 de REGROUPER les changements survenus
+ * pendant l'intervalle avant d'émettre : à 0,1 s on ne reçoit qu'une position
+ * sur plusieurs ticks, et les pastilles avancent par sauts visibles à côté d'un
+ * jeu à 60 images par seconde. À 0, chaque changement part immédiatement.
+ *
+ * `throttle` fixe alors le débit réel — 0,03 s, soit une trentaine de trames par
+ * seconde, ce qui sature déjà largement l'interpolation faite côté overlay. Le
+ * descendre davantage multiplierait les trames sans rien ajouter à l'image.
  */
 function gsiConfig(port: number): string {
   return `"CitronHUD"
 {
   "uri"       "http://127.0.0.1:${port}/gsi"
   "timeout"   "5.0"
-  "buffer"    "0.1"
-  "throttle"  "0.1"
+  "buffer"    "0.0"
+  "throttle"  "0.03"
   "heartbeat" "10.0"
   "data"
   {
@@ -204,14 +254,22 @@ export function installGsiConfig(port: number, steamPath?: string | null): GsiIn
   }
 }
 
-/** Vrai si le fichier GSI est présent et pointe vers le port attendu. */
+/**
+ * Vrai si le fichier GSI en place est exactement celui qu'on écrirait.
+ *
+ * Comparaison du contenu entier, et pas seulement du port : les réglages de
+ * cadence et la liste des blocs demandés évoluent avec le HUD, et un fichier
+ * hérité d'une version antérieure produirait un radar saccadé ou des
+ * utilitaires absents — deux symptômes qu'aucun streamer ne saurait relier à un
+ * fichier de configuration jamais réécrit.
+ */
 export function isGsiInstalled(port: number, steamPath?: string | null): boolean {
   const cfgDir = findCs2CfgDir(steamPath)
   if (!cfgDir) return false
   const target = join(cfgDir, GSI_FILE_NAME)
   if (!existsSync(target)) return false
   try {
-    return readFileSync(target, 'utf8').includes(`:${port}/gsi`)
+    return readFileSync(target, 'utf8') === gsiConfig(port)
   } catch {
     return false
   }

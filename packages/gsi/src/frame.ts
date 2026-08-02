@@ -1,7 +1,10 @@
 import type {
+  GrenadeType,
   NormalizedFrame,
+  NormalizedGrenade,
   NormalizedPlayer,
   NormalizedWeapon,
+  RawGrenade,
   RawGsiPayload,
   RawPlayer,
   RoundPhase,
@@ -155,6 +158,53 @@ function normalizePlayer(steamId: string, raw: RawPlayer): NormalizedPlayer | nu
   }
 }
 
+/**
+ * Vocabulaire des projectiles.
+ *
+ * CS2 nomme `firebomb` la molotov et `inferno` la nappe de feu qu'elle laisse :
+ * deux entités distinctes dans le flux, une seule chose à l'écran. On les fond
+ * sous `incendiary`, la nappe l'emportant naturellement puisqu'elle porte les
+ * foyers.
+ */
+const GRENADE_TYPES: Record<string, GrenadeType> = {
+  smoke: 'smoke',
+  flashbang: 'flash',
+  frag: 'frag',
+  decoy: 'decoy',
+  firebomb: 'incendiary',
+  incendiary: 'incendiary',
+  inferno: 'incendiary',
+  molotov: 'incendiary'
+}
+
+function normalizeGrenades(raw: Record<string, RawGrenade> | undefined): NormalizedGrenade[] {
+  if (!raw) return []
+
+  const grenades: NormalizedGrenade[] = []
+  for (const [id, entry] of Object.entries(raw)) {
+    const type = GRENADE_TYPES[entry?.type ?? '']
+    if (!type) continue
+
+    const flames: Vec3[] = []
+    for (const position of Object.values(entry.flames ?? {})) {
+      const parsed = parseVec3(position)
+      if (parsed) flames.push(parsed)
+    }
+
+    grenades.push({
+      id,
+      type,
+      ownerSteamId: entry.owner ?? null,
+      position: parseVec3(entry.position),
+      velocity: parseVec3(entry.velocity),
+      lifetime: parseFloatOrNull(entry.lifetime) ?? 0,
+      effectTime: parseFloatOrNull(entry.effecttime) ?? 0,
+      flames
+    })
+  }
+  return grenades
+}
+
 export function normalizeFrame(payload: RawGsiPayload, receivedAt = Date.now()): NormalizedFrame {
   const phase = resolvePhase(payload)
 
@@ -231,6 +281,7 @@ export function normalizeFrame(payload: RawGsiPayload, receivedAt = Date.now()):
     bomb,
     players,
     playersBySteamId,
+    grenades: normalizeGrenades(payload.grenades),
     observedSteamId:
       observedSteamId && playersBySteamId.has(observedSteamId) ? observedSteamId : null
   }

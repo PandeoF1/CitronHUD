@@ -105,6 +105,99 @@ function makeTeam(
   }
 }
 
+/**
+ * Trois utilitaires sur Mirage : une fumée posée, une nappe de feu, un
+ * projectile encore en l'air avec sa traînée.
+ *
+ * Les trois états qu'il faut savoir dessiner. Coordonnées choisies dans la zone
+ * couverte par le radar de la carte, pour que la mise au point visuelle porte
+ * sur le rendu et non sur la projection.
+ */
+function demoGrenades(smokeOwner: string, fireOwner: string): HudState['grenades'] {
+  return [
+    {
+      id: 'demo-smoke',
+      type: 'smoke',
+      ownerSteamId: smokeOwner,
+      side: 'T',
+      position: [-500, -350, 0],
+      active: true,
+      radius: 144,
+      flameRadius: 60,
+      flames: [],
+      trail: []
+    },
+    {
+      id: 'demo-fire',
+      type: 'incendiary',
+      ownerSteamId: fireOwner,
+      side: 'CT',
+      position: [280, -820, 0],
+      active: true,
+      radius: 0,
+      flameRadius: 60,
+      flames: [
+        [280, -820, 0],
+        [350, -760, 0],
+        [220, -880, 0]
+      ],
+      trail: []
+    },
+    {
+      id: 'demo-flash',
+      type: 'flash',
+      ownerSteamId: smokeOwner,
+      side: 'T',
+      position: [-980, 120, 60],
+      active: false,
+      radius: 0,
+      flameRadius: 60,
+      flames: [],
+      trail: Array.from(
+        { length: 14 },
+        (_, i) => [-1800 + i * 60, 520 - i * 30, 40] as [number, number, number]
+      )
+    }
+  ]
+}
+
+/**
+ * Bilan de manche de démonstration, dérivé de la scène.
+ *
+ * Construit depuis les joueurs déjà présents plutôt qu'avec des noms inventés :
+ * les cas pénibles de la scène — pseudo à rallonge, joueur inconnu du roster —
+ * doivent aussi être éprouvés dans le tableau de fin de manche.
+ */
+function demoReview(state: HudState): HudState['roundReview'] {
+  const players = state.players.map((player, index) => ({
+    steamId: player.steamId,
+    name: player.name,
+    avatarUrl: player.avatarUrl,
+    side: player.side,
+    slot: player.slot,
+    survived: player.slot === 'left' && index < 2,
+    kills: [3, 1, 0, 1, 0][index % 5]!,
+    headshots: [2, 0, 0, 1, 0][index % 5]!,
+    damage: [289, 118, 0, 96, 34][index % 5]!,
+    totalKills: player.stats.kills,
+    totalAssists: player.stats.assists,
+    totalDeaths: player.stats.deaths,
+    adr: player.stats.adr,
+    headshotPercent: player.stats.headshotPercent
+  }))
+
+  const hero = players[0]!
+  return {
+    round: 18,
+    winnerSide: 'CT',
+    winnerSlot: 'left',
+    reason: 'defuse',
+    score: { left: 10, right: 8 },
+    mvp: { ...hero, reason: '3 frags' },
+    players
+  }
+}
+
 export function buildDemoState(): HudState {
   const ctPlayers = CT_NAMES.map((name, i) => makePlayer(name, i, 'CT', 0))
   const tPlayers = T_NAMES.map((name, i) => makePlayer(name, i, 'T', 5))
@@ -150,6 +243,10 @@ export function buildDemoState(): HudState {
     players,
     observed: ctPlayers[0]!,
     killfeed: [],
+    grenades: demoGrenades(tPlayers[0]!.steamId, ctPlayers[1]!.steamId),
+    // Le bilan de manche s'éprouve à part : affiché en permanence, il masquerait
+    // tout le reste de la scène.
+    roundReview: null,
     event: { name: 'Citron Invitational', stage: 'Demi-finale' },
     series: {
       format: 'bo3',
@@ -176,10 +273,10 @@ export function buildDemoState(): HudState {
  * Le compte à rebours de bombe avance réellement : c'est le seul moyen de
  * vérifier que le pépin se vide correctement et que le chrono ne saute pas.
  */
-export function loadDemoScene(): void {
+export function loadDemoScene(options: { roundReview?: boolean } = {}): void {
   const store = useOverlay.getState()
   const base = buildDemoState()
-  store.setHud(base)
+  store.setHud(options.roundReview ? { ...base, roundReview: demoReview(base) } : base)
   store.setConnected(true)
 
   let countdown = base.bomb?.countdown ?? 40
