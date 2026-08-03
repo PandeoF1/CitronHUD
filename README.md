@@ -70,13 +70,28 @@ pnpm dev:server    # admin + API
 
 Le mode `?demo=1` charge une scène fabriquée (pseudo très long, joueur à 3 PV, joueur hors roster, bombe posée) pour travailler l'apparence sans lancer CS2.
 
-Le serveur a besoin d'une base PostgreSQL :
+Le serveur a besoin d'une base PostgreSQL et, pour les images, d'un stockage
+objet. Les deux se montent avec le docker-compose du dépôt :
+
+```bash
+cd infra
+cp .env.example .env   # renseigner les mots de passe
+docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres minio createbucket
+```
+
+La surcouche `docker-compose.dev.yml` publie PostgreSQL sur `127.0.0.1:5432` et
+MinIO sur `127.0.0.1:9000` — nécessaire parce qu'en développement l'application
+tourne sur la machine et non dans un conteneur. Elle n'est **pas** nommée
+`docker-compose.override.yml`, qui se chargerait tout seul : un déploiement ne
+doit pas exposer sa base de données par la simple présence d'un fichier oublié.
+
+Puis, côté serveur :
 
 ```bash
 cd apps/server
-cp .env.example .env.local   # au minimum DATABASE_URL et AUTH_SECRET
-pnpm db:migrate              # applique le schéma
-pnpm db:seed                 # premier admin + première clé d'API
+cp .env.example .env   # reprendre les identifiants de infra/.env
+pnpm db:migrate        # applique le schéma
+pnpm db:seed           # premier admin + première clé d'API
 ```
 
 `db:seed` affiche la clé d'API en clair **une seule fois** : seul son haché est
@@ -154,6 +169,7 @@ Le bouton « Ré-extraire les radars » du panneau force l'opération.
   | Sens des métriques                      | le désamorçage se bat vers le bas, tout le reste vers le haut                      |
   | Deux formes de synchronisation          | enveloppe du contrat **et** évènement isolé de la file d'envoi du client           |
   | Stockage absent                         | 503 franc sur les téléversements, tout le reste fonctionne                         |
+  | Stockage présent (MinIO)                | présignature, envoi réel du fichier, relecture anonyme de l'URL publique            |
   | Interface admin                         | sept pages rendues et capturées à l'écran, clé jamais réaffichée                   |
 
 ### Deux détails du serveur qui méritent d'être connus

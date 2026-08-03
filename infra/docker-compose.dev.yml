@@ -1,0 +1,27 @@
+# Surcouche de développement.
+#
+# En production, PostgreSQL et MinIO ne sont joignables que depuis le réseau
+# interne de Docker : seul Caddy est exposé. En développement, l'application
+# tourne sur la machine hôte (`pnpm dev:server`) et non dans un conteneur, donc
+# il lui faut des ports publiés.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres minio
+#
+# Ce fichier n'est volontairement pas nommé `docker-compose.override.yml` : un
+# override est chargé automatiquement dès qu'il existe, et il ne doit jamais
+# arriver qu'un déploiement expose sa base de données par la simple présence
+# d'un fichier oublié. L'ouverture se demande, elle ne se subit pas.
+#
+# Les ports sont liés à `127.0.0.1` et non à `0.0.0.0` : sur un poste connecté
+# à un réseau de LAN party, une base ouverte sur toutes les interfaces est un
+# accident qui n'attend qu'une occasion.
+
+services:
+  postgres:
+    ports:
+      - '127.0.0.1:5432:5432'
+
+  minio:
+    ports:
+      - '127.0.0.1:9000:9000'
+      - '127.0.0.1:9001:9001'

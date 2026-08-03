@@ -66,6 +66,31 @@ services:
       timeout: 3s
       retries: 20
 
+  # MinIO démarre sans aucun bucket, et l'application n'en crée pas : elle
+  # présigne des URL de téléversement, ce qui suppose la destination déjà là.
+  # Sans cette étape, le premier clip envoyé échouerait sur un déploiement
+  # pourtant « réussi ». Le conteneur s'exécute une fois puis s'arrête, et
+  # `mb --ignore-existing` le rend rejouable à chaque `up`.
+  #
+  # La lecture anonyme est nécessaire, pas négligente : `S3_PUBLIC_URL` est
+  # servie telle quelle à l'overlay, qui tourne dans une source navigateur
+  # d'OBS et n'a aucun moyen de présenter des identifiants. L'écriture, elle,
+  # reste fermée — elle passe par une URL présignée à validité courte. Les
+  # noms d'objets sont des UUID, donc non énumérables ; ce bucket ne doit
+  # contenir que ce qui est destiné à passer à l'antenne.
+  createbucket:
+    image: minio/mc:latest
+    depends_on:
+      minio:
+        condition: service_healthy
+    restart: 'no'
+    entrypoint: >
+      sh -c "
+      mc alias set local http://minio:9000 ${MINIO_ROOT_USER} ${MINIO_ROOT_PASSWORD} &&
+      mc mb --ignore-existing local/${S3_BUCKET} &&
+      mc anonymous set download local/${S3_BUCKET}
+      "
+
   caddy:
     image: caddy:2-alpine
     restart: unless-stopped
