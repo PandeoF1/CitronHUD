@@ -1,0 +1,573 @@
+/*
+ * Interface d'administration.
+ *
+ * Elle partage les tokens du HUD sans en partager les composants : un overlay
+ * se lit à trois mètres pendant une action, une table d'admin se lit à
+ * cinquante centimètres pendant une heure. Les tailles, les densités et les
+ * contrastes n'ont donc rien à voir — seules la palette et la typographie
+ * traversent, pour que l'outil reste manifestement de la même maison.
+ *
+ * Le jaune de marque garde ici la même règle qu'à l'antenne : il désigne la
+ * structure et l'action en cours, jamais une équipe.
+ */
+
+@import '@citronhud/theme/css';
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--surface-char);
+  color: var(--ink-pith);
+  font-family: var(--font-body);
+  font-size: var(--ui-body-size);
+  font-variation-settings: 'wdth' var(--ui-body-width);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* --------------------------------------------------------------------------
+ * Charpente
+ * ----------------------------------------------------------------------- */
+
+.shell {
+  display: grid;
+  grid-template-columns: 232px minmax(0, 1fr);
+  min-height: 100vh;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+  padding: var(--space-5) var(--space-4);
+  background: var(--surface-flesh);
+  border-right: var(--edge-hair) solid var(--surface-shell);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  font-family: var(--font-display);
+  font-size: var(--ui-h2-size);
+  font-weight: var(--ui-h2-weight);
+  letter-spacing: var(--ui-h2-tracking);
+}
+
+.brand-pip {
+  width: 12px;
+  height: 16px;
+  background: var(--brand-rind);
+  /* Le pépin : une goutte penchée, signature reprise du HUD. */
+  border-radius: 60% 60% 55% 55% / 70% 70% 45% 45%;
+  transform: rotate(-12deg);
+}
+
+.nav {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.nav a {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-3);
+  border-radius: var(--chamfer-sm);
+  color: var(--ink-pulp);
+  transition: background var(--dur-tick) var(--ease-out), color var(--dur-tick) var(--ease-out);
+}
+
+.nav a:hover {
+  background: var(--surface-husk);
+  color: var(--ink-pith);
+}
+
+.nav a[aria-current='page'] {
+  background: var(--surface-husk);
+  color: var(--brand-rind);
+  box-shadow: inset 2px 0 0 var(--brand-rind);
+}
+
+.nav-count {
+  font-family: var(--font-mono);
+  font-size: var(--ui-small-size);
+  color: var(--ink-rind-dim);
+}
+
+.sidebar-foot {
+  margin-top: auto;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+  font-size: var(--ui-small-size);
+  color: var(--ink-rind-dim);
+}
+
+.main {
+  padding: var(--space-6) var(--space-6) var(--space-8);
+  min-width: 0;
+}
+
+.page-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--space-4);
+  margin-bottom: var(--space-5);
+  flex-wrap: wrap;
+}
+
+h1 {
+  margin: 0;
+  font-family: var(--font-display);
+  font-size: var(--ui-h1-size);
+  font-weight: var(--ui-h1-weight);
+  letter-spacing: var(--ui-h1-tracking);
+  font-variation-settings: 'wdth' var(--ui-h1-width);
+}
+
+h2 {
+  margin: 0 0 var(--space-3);
+  font-family: var(--font-display);
+  font-size: var(--ui-h2-size);
+  font-weight: var(--ui-h2-weight);
+}
+
+.subtitle {
+  margin: var(--space-1) 0 0;
+  color: var(--ink-pulp);
+  max-width: 62ch;
+}
+
+.eyebrow {
+  font-size: var(--ui-eyebrow-size);
+  font-weight: var(--ui-eyebrow-weight);
+  letter-spacing: var(--ui-eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--ink-rind-dim);
+}
+
+/* --------------------------------------------------------------------------
+ * Blocs
+ * ----------------------------------------------------------------------- */
+
+/*
+ * L'échelle d'espacement vient du HUD, où tout est serré parce que la place à
+ * l'écran est comptée. Une page d'admin se lit à cinquante centimètres pendant
+ * une heure : on monte donc d'un ou deux crans partout plutôt que d'inventer un
+ * second jeu de valeurs.
+ */
+.card {
+  background: var(--surface-flesh);
+  border: var(--edge-hair) solid var(--surface-shell);
+  border-radius: var(--chamfer-md);
+  padding: var(--space-6);
+}
+
+.grid {
+  display: grid;
+  gap: var(--space-4);
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.stat-value {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--brand-rind);
+  line-height: 1;
+}
+
+.stat-label {
+  color: var(--ink-pulp);
+  font-size: var(--ui-small-size);
+}
+
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-5);
+}
+
+/* Les blocs de premier niveau d'une page respirent davantage : sans cela, un
+   tableau et la carte qui le suit partagent la même couleur de fond et se
+   lisent comme un seul bloc. */
+.main > .stack {
+  gap: var(--space-6);
+}
+
+.row {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  min-width: 0;
+}
+
+/* --------------------------------------------------------------------------
+ * Tables
+ * ----------------------------------------------------------------------- */
+
+.table-wrap {
+  /* Les tables larges défilent dans leur cadre : sans cela, c'est la page
+     entière qui se met à glisser latéralement. */
+  overflow-x: auto;
+  border: var(--edge-hair) solid var(--surface-shell);
+  border-radius: var(--chamfer-md);
+  background: var(--surface-flesh);
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--ui-body-size);
+}
+
+thead th {
+  text-align: left;
+  padding: var(--space-3);
+  font-size: var(--ui-eyebrow-size);
+  letter-spacing: var(--ui-eyebrow-tracking);
+  text-transform: uppercase;
+  color: var(--ink-rind-dim);
+  border-bottom: var(--edge-hair) solid var(--surface-shell);
+  white-space: nowrap;
+}
+
+tbody td {
+  padding: var(--space-4) var(--space-3);
+  border-bottom: var(--edge-hair) solid var(--surface-shell);
+  vertical-align: middle;
+}
+
+tbody tr:last-child td {
+  border-bottom: none;
+}
+
+tbody tr:hover {
+  background: var(--surface-husk);
+}
+
+td.num,
+th.num {
+  font-family: var(--font-mono);
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/*
+ * Secondaire, pas tertiaire : `--ink-rind-dim` est réservé au texte désactivé.
+ * Une colonne entière de vrais noms écrite dedans devient pénible à lire.
+ */
+.muted {
+  color: var(--ink-pulp);
+}
+
+/* Vraiment discret : horodatages, mentions d'absence. */
+.dim {
+  color: var(--ink-rind-dim);
+}
+
+.empty {
+  padding: var(--space-6);
+  text-align: center;
+  color: var(--ink-pulp);
+}
+
+/* --------------------------------------------------------------------------
+ * Vignettes
+ * ----------------------------------------------------------------------- */
+
+.avatar,
+.logo {
+  width: 36px;
+  height: 36px;
+  object-fit: cover;
+  border-radius: var(--chamfer-sm);
+  background: var(--surface-husk);
+  border: var(--edge-hair) solid var(--surface-shell);
+  flex: none;
+}
+
+.logo {
+  object-fit: contain;
+}
+
+.avatar-fallback {
+  display: grid;
+  place-items: center;
+  font-family: var(--font-mono);
+  font-size: var(--ui-small-size);
+  color: var(--ink-rind-dim);
+}
+
+/* --------------------------------------------------------------------------
+ * Étiquettes
+ * ----------------------------------------------------------------------- */
+
+.tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 2px var(--space-2);
+  border-radius: 999px;
+  font-size: var(--ui-small-size);
+  background: var(--surface-husk);
+  border: var(--edge-hair) solid var(--surface-shell);
+  color: var(--ink-pulp);
+  white-space: nowrap;
+}
+
+.tag-rind {
+  color: var(--brand-rind);
+  border-color: var(--brand-peel);
+}
+
+.tag-ct {
+  color: var(--side-ct);
+  border-color: var(--side-ct-deep);
+}
+
+.tag-t {
+  color: var(--side-t);
+  border-color: var(--side-t-deep);
+}
+
+.tag-leaf {
+  color: var(--sem-leaf);
+  border-color: var(--sem-leaf-deep);
+}
+
+.tag-blood {
+  color: var(--sem-blood);
+  border-color: var(--sem-blood);
+}
+
+/* --------------------------------------------------------------------------
+ * Formulaires
+ * ----------------------------------------------------------------------- */
+
+.form {
+  display: grid;
+  gap: var(--space-4) var(--space-5);
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  /*
+   * Alignement par le haut : les champs n'ont pas tous une note explicative,
+   * donc pas tous la même hauteur. Les aligner par le bas décale les libellés
+   * les uns par rapport aux autres et le formulaire paraît cassé.
+   */
+  align-items: start;
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  min-width: 0;
+}
+
+.field label {
+  font-size: var(--ui-small-size);
+  color: var(--ink-pulp);
+}
+
+.field .hint {
+  font-size: var(--ui-small-size);
+  color: var(--ink-rind-dim);
+}
+
+input[type='text'],
+input[type='email'],
+input[type='password'],
+input[type='url'],
+input[type='number'],
+select,
+textarea {
+  width: 100%;
+  padding: var(--space-2) var(--space-3);
+  background: var(--surface-char);
+  border: var(--edge-hair) solid var(--surface-shell);
+  border-radius: var(--chamfer-sm);
+  color: var(--ink-pith);
+  font-family: inherit;
+  font-size: var(--ui-body-size);
+}
+
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible,
+button:focus-visible,
+a:focus-visible {
+  outline: 2px solid var(--brand-rind);
+  outline-offset: 2px;
+}
+
+input::placeholder {
+  color: var(--ink-rind-dim);
+}
+
+.checkbox {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  color: var(--ink-pulp);
+  font-size: var(--ui-small-size);
+}
+
+button,
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--chamfer-sm);
+  border: var(--edge-hair) solid var(--surface-shell);
+  background: var(--surface-husk);
+  color: var(--ink-pith);
+  font-family: inherit;
+  font-size: var(--ui-body-size);
+  cursor: pointer;
+  transition: background var(--dur-tick) var(--ease-out);
+}
+
+button:hover,
+.button:hover {
+  background: var(--surface-shell);
+}
+
+button.primary,
+.button.primary {
+  background: var(--brand-rind);
+  border-color: var(--brand-rind);
+  color: var(--ink-on-rind);
+  font-weight: 600;
+}
+
+button.primary:hover,
+.button.primary:hover {
+  background: var(--brand-zest);
+}
+
+button.danger {
+  color: var(--sem-blood);
+  border-color: var(--sem-blood);
+  background: transparent;
+}
+
+button.danger:hover {
+  background: color-mix(in srgb, var(--sem-blood) 16%, transparent);
+}
+
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  color: var(--brand-rind);
+  text-decoration: underline;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Le bouton d'une fiche ne s'étire pas sur toute la largeur : il commande une
+   action précise, pas la page entière — contrairement à celui de la connexion. */
+.action-submit {
+  align-self: flex-start;
+  min-width: 200px;
+}
+
+/* --------------------------------------------------------------------------
+ * Messages
+ * ----------------------------------------------------------------------- */
+
+.notice {
+  padding: var(--space-3) var(--space-4);
+  border-radius: var(--chamfer-sm);
+  border-left: 3px solid var(--brand-rind);
+  background: var(--surface-flesh);
+  color: var(--ink-pulp);
+}
+
+.notice.warn {
+  border-left-color: var(--sem-warn);
+}
+
+.notice.error {
+  border-left-color: var(--sem-blood);
+  color: var(--ink-pith);
+}
+
+.notice.ok {
+  border-left-color: var(--sem-leaf);
+}
+
+/* Le secret n'apparaît qu'une fois : il doit être impossible à manquer. */
+.secret {
+  font-family: var(--font-mono);
+  font-size: var(--ui-body-size);
+  padding: var(--space-3);
+  background: var(--surface-char);
+  border: var(--edge-hair) dashed var(--brand-peel);
+  border-radius: var(--chamfer-sm);
+  word-break: break-all;
+  color: var(--brand-zest);
+}
+
+/* --------------------------------------------------------------------------
+ * Connexion
+ * ----------------------------------------------------------------------- */
+
+.login {
+  min-height: 100vh;
+  display: grid;
+  place-items: center;
+  padding: var(--space-5);
+}
+
+.login-card {
+  width: min(400px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  background: var(--surface-flesh);
+  border: var(--edge-hair) solid var(--surface-shell);
+  border-radius: var(--chamfer-lg);
+  padding: var(--space-6);
+}
+
+@media (max-width: 860px) {
+  .shell {
+    grid-template-columns: minmax(0, 1fr);
+  }
+
+  .sidebar {
+    position: static;
+    height: auto;
+  }
+
+  .main {
+    padding: var(--space-4);
+  }
+}

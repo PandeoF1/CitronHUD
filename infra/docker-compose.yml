@@ -28,6 +28,8 @@ services:
       S3_PUBLIC_URL: ${PUBLIC_URL}/files
       AUTH_SECRET: ${AUTH_SECRET}
       PUBLIC_URL: ${PUBLIC_URL}
+      SEED_ADMIN_EMAIL: ${SEED_ADMIN_EMAIL}
+      SEED_ADMIN_PASSWORD: ${SEED_ADMIN_PASSWORD}
       NODE_ENV: production
     expose:
       - '3000'

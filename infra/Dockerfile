@@ -17,4 +17,9 @@ ENV NODE_ENV=production
 COPY --from=builder /app /app
 
 EXPOSE 3000
-CMD ["pnpm", "--filter", "@citronhud/server", "start"]
+
+# Les migrations passent au démarrage, pas dans une étape séparée : un
+# déploiement en une commande ne doit pas laisser le schéma en retard sur le
+# code. Elles sont idempotentes, et `depends_on: service_healthy` garantit que
+# PostgreSQL répond déjà.
+CMD ["sh", "-c", "pnpm --filter @citronhud/server db:migrate && pnpm --filter @citronhud/server start"]

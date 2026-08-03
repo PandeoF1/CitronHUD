@@ -70,13 +70,30 @@ pnpm dev:server    # admin + API
 
 Le mode `?demo=1` charge une scène fabriquée (pseudo très long, joueur à 3 PV, joueur hors roster, bombe posée) pour travailler l'apparence sans lancer CS2.
 
+Le serveur a besoin d'une base PostgreSQL :
+
+```bash
+cd apps/server
+cp .env.example .env.local   # au minimum DATABASE_URL et AUTH_SECRET
+pnpm db:migrate              # applique le schéma
+pnpm db:seed                 # premier admin + première clé d'API
+```
+
+`db:seed` affiche la clé d'API en clair **une seule fois** : seul son haché est
+stocké. L'inscription est fermée dans l'admin, donc c'est aussi le seul moyen de
+créer le compte de départ.
+
 ### Déployer le serveur
 
 ```bash
 cd infra
 cp .env.example .env      # renseigner domaine et secrets
 docker compose up -d
+docker compose exec app pnpm db:seed
 ```
+
+Les migrations passent au démarrage du conteneur : un déploiement en une
+commande ne laisse jamais le schéma en retard sur le code.
 
 ---
 
@@ -119,9 +136,39 @@ copie figée se périme dès qu'une carte est remaniée, et les variantes d'éta
 (Nuke, Vertigo, Train) comme les cartes de l'atelier arrivent gratuitement.
 Le bouton « Ré-extraire les radars » du panneau force l'opération.
 
-### Serveur Next.js — non commencé
+- **`apps/server`** — **API v1 et admin complets**. Vérifié bout en bout contre
+  un vrai PostgreSQL, serveur de production démarré, plus **23 tests** unitaires
+  (`pnpm --filter @citronhud/server test`) :
 
-Schéma Drizzle, better-auth, API v1, UI admin CRUD, upload S3.
+  | Vérification                            | Résultat                                                                          |
+  | --------------------------------------- | --------------------------------------------------------------------------------- |
+  | Migrations et amorçage                  | schéma appliqué, premier admin et première clé créés, relance idempotente          |
+  | Clés d'API                              | absente, inconnue et révoquée refusées ; comparaison en temps constant             |
+  | Séparation des droits                   | une clé lit le roster et rapporte, mais ne peut pas créer d'équipe (403)           |
+  | Authentification admin                  | connexion, session en cookie, mot de passe faux refusé sans cookie                 |
+  | CRUD roster                             | création, modification, doublons de slug et de SteamID refusés (409), SteamID invalide (422) |
+  | Instantané et cache                     | empreinte du contenu, 304 sur `?version=` **et** sur `If-None-Match`               |
+  | Modification partielle                  | un `PATCH { nickname }` ne détache pas le joueur de son équipe                     |
+  | Temps forts                             | acceptés avec l'identifiant du client, renvoi idempotent, session créée au vol     |
+  | Arbitrage des records                   | valeur inférieure et valeur égale rejetées, valeur détrônée conservée              |
+  | Sens des métriques                      | le désamorçage se bat vers le bas, tout le reste vers le haut                      |
+  | Deux formes de synchronisation          | enveloppe du contrat **et** évènement isolé de la file d'envoi du client           |
+  | Stockage absent                         | 503 franc sur les téléversements, tout le reste fonctionne                         |
+  | Interface admin                         | sept pages rendues et capturées à l'écran, clé jamais réaffichée                   |
+
+### Deux détails du serveur qui méritent d'être connus
+
+**Une clé d'API ne modifie jamais le roster.** Elle le lit et rapporte ce qui
+s'est passé ; toute modification éditoriale passe par une session
+d'administration. Les clés vivent sur les machines des streamers, souvent
+partagées et rarement changées — une clé perdue ne doit pas permettre d'effacer
+les équipes de la structure.
+
+**L'arbitrage des records est côté serveur.** Le client propose, le serveur
+tranche, sous verrou de ligne. C'est ce qui empêche une machine à l'heure fausse
+ou un client d'une version dont le comptage a changé d'inscrire un record que
+personne n'a réalisé. Une date trop lointaine est corrigée, pas rejetée : un ace
+reste un ace même sur une machine mal réglée.
 
 ### Non vérifié
 
