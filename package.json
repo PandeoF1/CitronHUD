@@ -1,6 +1,6 @@
 {
   "name": "citronhud",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "description": "CitronHUD — HUD CS2 plug-n-play pour Citron Esport (client Electron + serveur d'administration).",
   "packageManager": "pnpm@10.33.1",

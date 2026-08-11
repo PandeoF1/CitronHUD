@@ -1,6 +1,6 @@
 {
   "name": "@citronhud/client",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "description": "Client CitronHUD — serveur local, détection GSI, capture des temps forts et panneau de contrôle.",
   "main": "./out/main/index.js",
