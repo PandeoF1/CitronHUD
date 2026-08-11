@@ -48,6 +48,8 @@ export interface LocalServerEvents {
    * la régie suffit alors à trancher.
    */
   gsiRate: () => number | null
+  /** Forme de la dernière trame — voir `GsiShape` dans `index.ts`. */
+  gsiShape: () => { players: number; bytes: number; phase: string | null }
 }
 
 type Io = SocketServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>
@@ -124,7 +126,8 @@ export class LocalServer {
         overlayUrl: this.overlayUrl,
         live: this.lastState?.live ?? false,
         overlays: this.io?.sockets.adapter.rooms.get(SOCKET_ROOM.overlay)?.size ?? 0,
-        gsiRate: this.events.gsiRate()
+        gsiRate: this.events.gsiRate(),
+        gsi: this.events.gsiShape()
       })
     })
 

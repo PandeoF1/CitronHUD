@@ -80,7 +80,8 @@ const status: ConnectionStatus = {
   capture: 'off',
   lastSyncAt: null,
   lastGsiAt: null,
-  gsiRate: null
+  gsiRate: null,
+  gsiPlayers: null
 }
 
 /* --------------------------------------------------------------------------
@@ -95,6 +96,44 @@ const status: ConnectionStatus = {
  * 60 n'apprend rien à personne.
  */
 const frameTimestamps: number[] = []
+
+/**
+ * Forme de la dernière trame reçue, pour le diagnostic.
+ *
+ * Une cadence basse a deux causes très différentes, et le seul moyen de les
+ * séparer est de regarder ce que CS2 envoie réellement.
+ *
+ * CS2 ne fournit `allplayers_*` qu'en mode observateur : pour un joueur vivant
+ * en partie normale, la trame ne contient que ses propres données, qui ne
+ * changent que par à-coups. Une trame sans les dix joueurs explique donc à elle
+ * seule un débit faible — et signifie surtout que le HUD ne peut pas fonctionner
+ * dans ce mode, indépendamment de toute question de fluidité.
+ */
+export interface GsiShape {
+  /** Joueurs présents dans `allplayers`. Dix en observateur, zéro en jeu. */
+  players: number
+  /** Taille de la trame : une trame d'observateur pèse plusieurs dizaines de Ko. */
+  bytes: number
+  /** Phase annoncée : en `warmup` ou hors partie, peu de choses changent. */
+  phase: string | null
+}
+
+let lastShape: GsiShape = { players: 0, bytes: 0, phase: null }
+
+function recordFrameShape(payload: unknown): void {
+  const frame = payload as {
+    allplayers?: Record<string, unknown>
+    phase_countdowns?: { phase?: string }
+    map?: { phase?: string }
+  }
+  lastShape = {
+    players: Object.keys(frame?.allplayers ?? {}).length,
+    // Mesurée sur la trame déjà désérialisée : approximative à quelques octets
+    // près, ce qui suffit largement pour distinguer 2 Ko de 60 Ko.
+    bytes: JSON.stringify(payload ?? null).length,
+    phase: frame?.phase_countdowns?.phase ?? frame?.map?.phase ?? null
+  }
+}
 /** Fenêtre de moyennage. Assez longue pour être stable, assez courte pour réagir. */
 const RATE_WINDOW_MS = 3000
 /** La cadence n'est repoussée qu'à cet intervalle : 33 IPC par seconde vers le
@@ -124,7 +163,7 @@ function recordFrameRate(now: number): void {
   if (span <= 0) return
 
   const rate = ((frameTimestamps.length - 1) / span) * 1000
-  pushStatus({ gsiRate: Math.round(rate * 10) / 10 })
+  pushStatus({ gsiRate: Math.round(rate * 10) / 10, gsiPlayers: lastShape.players })
 }
 
 function pushStatus(patch: Partial<ConnectionStatus> = {}): void {
@@ -222,6 +261,7 @@ function handleGsiFrame(payload: unknown): void {
     pushStatus({ gsi: 'live', lastGsiAt: new Date().toISOString() })
   }
   recordFrameRate(lastFrameAt)
+  recordFrameShape(payload)
 
   const tick = engine.ingest(payload as never)
 
@@ -272,7 +312,7 @@ function watchStaleness(): void {
     // La cadence est effacée en même temps : afficher « 32 trames/s » sur un
     // flux interrompu donnerait une fausse impression de santé.
     frameTimestamps.length = 0
-    pushStatus({ gsi: 'stale', gsiRate: null })
+    pushStatus({ gsi: 'stale', gsiRate: null, gsiPlayers: null })
     const stale = engine.markStale()
     if (stale) {
       server.broadcastState(stale)
@@ -353,7 +393,8 @@ async function bootstrap(): Promise<void> {
       server.stopReplay('ended')
     },
     onZestRequested: (origin) => server.burstZest(origin, 1.2),
-    gsiRate: () => status.gsiRate
+    gsiRate: () => status.gsiRate,
+    gsiShape: () => lastShape
   })
 
   await server.start(settings.hudPort)

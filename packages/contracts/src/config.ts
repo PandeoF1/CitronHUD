@@ -188,6 +188,15 @@ export const connectionStatusSchema = z.object({
    * serveur à faible tickrate — ou une machine à la peine — descend en dessous
    * sans que rien ne le signale.
    */
-  gsiRate: z.number().nullable()
+  gsiRate: z.number().nullable(),
+  /**
+   * Joueurs présents dans la dernière trame.
+   *
+   * Zéro veut dire que CS2 n'envoie pas `allplayers`, ce qu'il ne fait qu'en
+   * mode observateur. C'est un diagnostic plus important que la cadence : dans
+   * ce cas le HUD ne peut afficher ni les effectifs, ni le radar, ni le
+   * killfeed — et un débit faible en est la simple conséquence, pas la cause.
+   */
+  gsiPlayers: z.number().nullable()
 })
 export type ConnectionStatus = z.infer<typeof connectionStatusSchema>

@@ -18,25 +18,44 @@ interface Lamp {
 }
 
 /**
- * Seuil en dessous duquel la cadence se voit à l'antenne.
+ * Seuil en dessous duquel le flux est réellement anormal.
  *
- * Le fichier GSI demande une trame toutes les 30 ms. En pratique CS2 n'émet que
- * sur changement, et un serveur à faible tickrate ou une machine à la peine
- * descend nettement plus bas — ce qui donne des barres de vie et un chronomètre
- * qui avancent par à-coups. Vingt trames par seconde est le point où l'œil
- * commence à le remarquer.
+ * Mesuré contre CS2 en observateur : le jeu émet environ **huit trames par
+ * seconde** alors que le fichier GSI en demande une toutes les 30 ms. Ce n'est
+ * ni la faute du fichier, ni celle du relais — mesuré à 32 trames/s de bout en
+ * bout sur un flux synthétique — mais un plafond du jeu lui-même.
+ *
+ * Le seuil est donc placé bas : avertir à vingt reviendrait à afficher une
+ * alerte permanente sur un fonctionnement parfaitement normal. À moins de cinq
+ * trames par seconde, en revanche, quelque chose ne va pas.
+ *
+ * La fluidité perçue se règle côté overlay, en interpolant entre deux trames —
+ * ce que le radar fait déjà.
  */
-const SMOOTH_RATE_THRESHOLD = 20
+const SMOOTH_RATE_THRESHOLD = 5
 
 function gsiLamp(status: ConnectionStatus): Lamp {
   switch (status.gsi) {
     case 'live': {
+      /*
+       * L'absence des dix joueurs prime sur la cadence, et de loin. CS2 ne
+       * fournit `allplayers` qu'en mode observateur : sans lui, ni effectifs, ni
+       * radar, ni killfeed. Afficher « flux irrégulier » dans ce cas enverrait
+       * chercher un problème de performance là où il n'y en a pas.
+       */
+      if (status.gsiPlayers === 0) {
+        return {
+          label: 'CS2',
+          value: 'Passez en observateur — CS2 n’envoie pas les joueurs',
+          tone: 'bad'
+        }
+      }
       if (status.gsiRate === null) {
         return { label: 'CS2', value: 'Données en direct', tone: 'ok' }
       }
       const rate = `${status.gsiRate.toFixed(0)} trames/s`
       return status.gsiRate < SMOOTH_RATE_THRESHOLD
-        ? { label: 'CS2', value: `${rate} — flux irrégulier`, tone: 'warn' }
+        ? { label: 'CS2', value: `${rate} — flux anormalement lent`, tone: 'warn' }
         : { label: 'CS2', value: `Données en direct — ${rate}`, tone: 'ok' }
     }
     case 'stale':
