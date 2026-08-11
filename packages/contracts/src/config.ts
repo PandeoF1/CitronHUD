@@ -178,6 +178,16 @@ export const connectionStatusSchema = z.object({
   }),
   capture: z.enum(['off', 'obs', 'internal', 'unavailable']),
   lastSyncAt: z.string().nullable(),
-  lastGsiAt: z.string().nullable()
+  lastGsiAt: z.string().nullable(),
+  /**
+   * Trames GSI reçues par seconde, moyennées sur les dernières secondes.
+   *
+   * Affichée parce que « le HUD a l'air lent » est indiagnostiquable tant qu'on
+   * ne sait pas si CS2 envoie 33 trames par seconde ou 10. Le fichier GSI
+   * demande `throttle 0.03`, mais le jeu n'émet que sur changement et un
+   * serveur à faible tickrate — ou une machine à la peine — descend en dessous
+   * sans que rien ne le signale.
+   */
+  gsiRate: z.number().nullable()
 })
 export type ConnectionStatus = z.infer<typeof connectionStatusSchema>

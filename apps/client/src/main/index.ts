@@ -79,7 +79,52 @@ const status: ConnectionStatus = {
   overlay: { connected: 0, url: '' },
   capture: 'off',
   lastSyncAt: null,
-  lastGsiAt: null
+  lastGsiAt: null,
+  gsiRate: null
+}
+
+/* --------------------------------------------------------------------------
+ * Mesure de la cadence GSI
+ * -------------------------------------------------------------------------- */
+
+/**
+ * Horodatages des trames récentes, pour une moyenne glissante.
+ *
+ * Une moyenne plutôt qu'un écart instantané : le débit de CS2 est naturellement
+ * irrégulier — il n'émet que sur changement — et un chiffre qui saute entre 8 et
+ * 60 n'apprend rien à personne.
+ */
+const frameTimestamps: number[] = []
+/** Fenêtre de moyennage. Assez longue pour être stable, assez courte pour réagir. */
+const RATE_WINDOW_MS = 3000
+/** La cadence n'est repoussée qu'à cet intervalle : 33 IPC par seconde vers le
+ * panneau coûteraient plus cher que ce qu'ils mesurent. */
+const RATE_PUSH_INTERVAL_MS = 1000
+let lastRatePushAt = 0
+
+function recordFrameRate(now: number): void {
+  frameTimestamps.push(now)
+  while (frameTimestamps.length > 0 && now - frameTimestamps[0]! > RATE_WINDOW_MS) {
+    frameTimestamps.shift()
+  }
+
+  if (now - lastRatePushAt < RATE_PUSH_INTERVAL_MS) return
+  lastRatePushAt = now
+
+  /*
+   * En dessous de quelques échantillons on ne publie rien. C'est le cas au
+   * démarrage et à la reprise après une pause, où la fenêtre ne contient qu'une
+   * ou deux trames : la division donnerait un chiffre très bas, aussitôt affiché
+   * comme « flux irrégulier » alors que le flux vient simplement de reprendre.
+   */
+  const MINIMUM_SAMPLES = 5
+  if (frameTimestamps.length < MINIMUM_SAMPLES) return
+
+  const span = now - frameTimestamps[0]!
+  if (span <= 0) return
+
+  const rate = ((frameTimestamps.length - 1) / span) * 1000
+  pushStatus({ gsiRate: Math.round(rate * 10) / 10 })
 }
 
 function pushStatus(patch: Partial<ConnectionStatus> = {}): void {
@@ -176,6 +221,7 @@ function handleGsiFrame(payload: unknown): void {
   if (status.gsi !== 'live') {
     pushStatus({ gsi: 'live', lastGsiAt: new Date().toISOString() })
   }
+  recordFrameRate(lastFrameAt)
 
   const tick = engine.ingest(payload as never)
 
@@ -223,7 +269,10 @@ function watchStaleness(): void {
     if (status.gsi !== 'live') return
     if (Date.now() - lastFrameAt < GSI_STALE_MS) return
 
-    pushStatus({ gsi: 'stale' })
+    // La cadence est effacée en même temps : afficher « 32 trames/s » sur un
+    // flux interrompu donnerait une fausse impression de santé.
+    frameTimestamps.length = 0
+    pushStatus({ gsi: 'stale', gsiRate: null })
     const stale = engine.markStale()
     if (stale) {
       server.broadcastState(stale)
@@ -303,7 +352,8 @@ async function bootstrap(): Promise<void> {
       replayInFlight = false
       server.stopReplay('ended')
     },
-    onZestRequested: (origin) => server.burstZest(origin, 1.2)
+    onZestRequested: (origin) => server.burstZest(origin, 1.2),
+    gsiRate: () => status.gsiRate
   })
 
   await server.start(settings.hudPort)

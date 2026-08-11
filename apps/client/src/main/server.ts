@@ -39,6 +39,15 @@ export interface LocalServerEvents {
   onReplayEnded: (highlightId: string) => void
   /** Le panneau demande une gerbe de zestes. */
   onZestRequested: (origin: 'left' | 'right' | 'center') => void
+  /**
+   * Cadence GSI mesurée, en trames par seconde.
+   *
+   * Exposée par la sonde de vie parce que « le HUD a l'air lent » ne se
+   * diagnostique pas de l'extérieur : sans ce chiffre, impossible de savoir si
+   * c'est CS2 qui émet peu ou l'affichage qui peine. Un `curl /health` depuis
+   * la régie suffit alors à trancher.
+   */
+  gsiRate: () => number | null
 }
 
 type Io = SocketServer<ClientToServerEvents, ServerToClientEvents, InterServerEvents, SocketData>
@@ -114,7 +123,8 @@ export class LocalServer {
         ok: true,
         overlayUrl: this.overlayUrl,
         live: this.lastState?.live ?? false,
-        overlays: this.io?.sockets.adapter.rooms.get(SOCKET_ROOM.overlay)?.size ?? 0
+        overlays: this.io?.sockets.adapter.rooms.get(SOCKET_ROOM.overlay)?.size ?? 0,
+        gsiRate: this.events.gsiRate()
       })
     })
 

@@ -17,10 +17,28 @@ interface Lamp {
   tone: Tone
 }
 
+/**
+ * Seuil en dessous duquel la cadence se voit à l'antenne.
+ *
+ * Le fichier GSI demande une trame toutes les 30 ms. En pratique CS2 n'émet que
+ * sur changement, et un serveur à faible tickrate ou une machine à la peine
+ * descend nettement plus bas — ce qui donne des barres de vie et un chronomètre
+ * qui avancent par à-coups. Vingt trames par seconde est le point où l'œil
+ * commence à le remarquer.
+ */
+const SMOOTH_RATE_THRESHOLD = 20
+
 function gsiLamp(status: ConnectionStatus): Lamp {
   switch (status.gsi) {
-    case 'live':
-      return { label: 'CS2', value: 'Données en direct', tone: 'ok' }
+    case 'live': {
+      if (status.gsiRate === null) {
+        return { label: 'CS2', value: 'Données en direct', tone: 'ok' }
+      }
+      const rate = `${status.gsiRate.toFixed(0)} trames/s`
+      return status.gsiRate < SMOOTH_RATE_THRESHOLD
+        ? { label: 'CS2', value: `${rate} — flux irrégulier`, tone: 'warn' }
+        : { label: 'CS2', value: `Données en direct — ${rate}`, tone: 'ok' }
+    }
     case 'stale':
       return { label: 'CS2', value: 'Flux interrompu', tone: 'warn' }
     default:

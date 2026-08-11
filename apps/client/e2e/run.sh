@@ -61,7 +61,11 @@ if [ ! -f out/main/index.js ]; then
 fi
 
 # Un client déjà lancé occuperait le port et fausserait tout.
-pkill -f "electron out/main/index.js" >/dev/null 2>&1 || true
+#
+# Les crochets autour de la première lettre sont indispensables : `pkill -f`
+# compare la ligne de commande complète de chaque processus, y compris celle du
+# shell qui exécute ce script — sans eux, le script se tue lui-même.
+pkill -f "[e]lectron out/main/index.js" >/dev/null 2>&1 || true
 sleep 1
 
 node e2e/link.mjs
