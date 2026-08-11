@@ -25,10 +25,26 @@ export async function POST(request: Request): Promise<Response> {
     return fail(400, 'invalid_json', 'Corps de requête JSON illisible.')
   }
 
-  const candidates = candidatesFrom(body)
+  const { candidates, unusable } = candidatesFrom(body)
   if (candidates.length === 0) {
     return fail(422, 'no_candidates', 'Aucun candidat exploitable dans la requête.')
   }
 
-  return json(await syncRecords(candidates))
+  const outcome = await syncRecords(candidates)
+
+  /*
+   * Les candidats illisibles sont signalés au lieu d'être passés sous silence.
+   * Le cas typique est un client plus récent que le serveur qui envoie une
+   * métrique inconnue : sans cette ligne, le record semble parti et personne ne
+   * sait pourquoi il n'apparaît nulle part.
+   */
+  if (unusable > 0) {
+    outcome.rejected.push({
+      metric: null,
+      steamId: null,
+      reason: `${unusable} candidat(s) illisibles : métrique ou portée inconnue de ce serveur.`
+    })
+  }
+
+  return json(outcome)
 }

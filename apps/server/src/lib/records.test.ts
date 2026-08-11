@@ -38,10 +38,11 @@ describe('candidatesFrom', () => {
       RECEIVED
     )
 
-    expect(result).toHaveLength(2)
-    expect(result[0]!.metric).toBe('kills_match')
+    expect(result.candidates).toHaveLength(2)
+    expect(result.unusable).toBe(0)
+    expect(result.candidates[0]!.metric).toBe('kills_match')
     // La session de l'enveloppe descend sur les candidats qui n'en portent pas.
-    expect(result[0]!.sessionId).toBe('session-1')
+    expect(result.candidates[0]!.sessionId).toBe('session-1')
   })
 
   /*
@@ -65,17 +66,58 @@ describe('candidatesFrom', () => {
       RECEIVED
     )
 
-    expect(result).toHaveLength(1)
-    expect(result[0]!.value).toBe(5)
+    expect(result.candidates).toHaveLength(1)
+    expect(result.candidates[0]!.value).toBe(5)
     // Absent de l'évènement : l'heure de réception fait foi.
-    expect(result[0]!.achievedAt).toBe(RECEIVED.toISOString())
+    expect(result.candidates[0]!.achievedAt).toBe(RECEIVED.toISOString())
   })
 
   it('écarte ce qui n’est pas exploitable plutôt que de le deviner', () => {
-    expect(candidatesFrom({ sessionId: 's', candidates: [{ metric: 'kills_match' }] })).toEqual([])
-    expect(candidatesFrom({ metric: 'kills_match', scope: 'player', value: 'beaucoup' })).toEqual([])
-    expect(candidatesFrom(null)).toEqual([])
-    expect(candidatesFrom('bonjour')).toEqual([])
+    const cases = [
+      { sessionId: 's', candidates: [{ metric: 'kills_match' }] },
+      { metric: 'kills_match', scope: 'player', value: 'beaucoup' },
+      null,
+      'bonjour'
+    ]
+    for (const input of cases) {
+      expect(candidatesFrom(input).candidates).toEqual([])
+    }
+  })
+
+  /*
+   * Le cas qui a motivé la validation stricte : `metric` était transtypée sans
+   * contrôle, donc une métrique inconnue traversait jusqu'à `beatsRecord`, où
+   * `RECORD_DIRECTION[metric]` vaut `undefined`. La comparaison basculait alors
+   * sur « plus petit c'est mieux » et le record s'arbitrait à l'envers — un
+   * client plus récent que le serveur suffisait à déclencher ça.
+   */
+  it('refuse une métrique que ce serveur ne connaît pas', () => {
+    const result = candidatesFrom({
+      metric: 'most_kills_round',
+      scope: 'player',
+      steamId: '76561198000000002',
+      value: 5
+    })
+
+    expect(result.candidates).toEqual([])
+    expect(result.unusable).toBe(1)
+  })
+
+  it('refuse une portée inconnue', () => {
+    const result = candidatesFrom({ metric: 'kills_match', scope: 'planete', value: 5 })
+    expect(result.candidates).toEqual([])
+    expect(result.unusable).toBe(1)
+  })
+
+  /** Un candidat illisible ne doit pas emporter ceux qui sont valides. */
+  it('garde les candidats valides et compte les autres', () => {
+    const result = candidatesFrom({
+      sessionId: 'session-1',
+      candidates: [candidate(), { metric: 'inconnue', scope: 'player', value: 3 }]
+    })
+
+    expect(result.candidates).toHaveLength(1)
+    expect(result.unusable).toBe(1)
   })
 })
 

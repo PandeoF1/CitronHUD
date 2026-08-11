@@ -1,7 +1,10 @@
+import { existsSync, statSync } from 'node:fs'
+import { readFile } from 'node:fs/promises'
 import {
   API_KEY_HEADER,
   API_ROUTES,
   CLIENT_VERSION_HEADER,
+  clipUploadTicketSchema,
   rosterSnapshotSchema,
   type Player,
   type Team
@@ -13,7 +16,8 @@ import {
   loadRoster,
   peekOutbox,
   replaceRoster,
-  setMeta
+  setMeta,
+  type ClipUploadJob
 } from './db'
 import { getClientSettings } from './settings'
 
@@ -36,6 +40,22 @@ export interface SyncEvents {
 const ROSTER_VERSION_KEY = 'roster:version'
 /** Au-delà, on considère le serveur injoignable plutôt que lent. */
 const REQUEST_TIMEOUT_MS = 8000
+/**
+ * Un clip pèse des dizaines de mégaoctets et monte souvent depuis une connexion
+ * qui pousse déjà un direct : les huit secondes des appels d'API n'ont aucun
+ * sens ici. Dix minutes laissent passer un gros clip sur un mauvais uplink tout
+ * en bornant une montée qui n'aboutira jamais.
+ */
+const UPLOAD_TIMEOUT_MS = 10 * 60 * 1000
+
+/**
+ * Issue d'une entrée de la file.
+ *
+ * `abandon` est distinct de `retry` : certaines entrées ne peuvent plus aboutir
+ * — fichier purgé, clip trop volumineux, téléversement désactivé — et les
+ * réessayer dix fois ne fait que retarder le reste de la file.
+ */
+type OutboxOutcome = 'sent' | 'retry' | 'abandon'
 
 export class SyncService {
   private readonly events: SyncEvents
@@ -154,6 +174,10 @@ export class SyncService {
    *
    * Traitée entrée par entrée : un temps fort refusé ne doit pas empêcher les
    * suivants de partir. Les échecs sont comptés et abandonnés après dix essais.
+   *
+   * L'ordre d'insertion est respecté, et ce n'est pas un détail : un clip
+   * référence un temps fort que le serveur doit déjà connaître. Les deux
+   * entrées partent donc dans le même passage, le temps fort en premier.
    */
   private async flushOutbox(): Promise<void> {
     const rows = peekOutbox()
@@ -163,22 +187,102 @@ export class SyncService {
     const failed: number[] = []
 
     for (const row of rows) {
-      const path = row.kind === 'highlight' ? API_ROUTES.highlights : API_ROUTES.recordsSync
-      try {
-        const response = await this.request(path, { method: 'POST', body: row.payload })
-        if (response.ok || response.status === 409) {
-          // 409 = déjà connu du serveur : l'entrée a bien atteint sa cible.
-          sent.push(row.id)
-        } else {
-          failed.push(row.id)
-        }
-      } catch {
-        failed.push(row.id)
-      }
+      const outcome =
+        row.kind === 'clip'
+          ? await this.sendClip(JSON.parse(row.payload) as ClipUploadJob)
+          : await this.sendMessage(row.kind, row.payload)
+
+      // `abandon` et `sent` mènent au même endroit — retirer l'entrée — mais
+      // pour des raisons opposées : l'un a abouti, l'autre n'aboutira jamais.
+      // Les compter ensemble éviterait dix tentatives sur un fichier effacé.
+      if (outcome === 'retry') failed.push(row.id)
+      else sent.push(row.id)
     }
 
     dropOutbox(sent)
     failOutbox(failed)
+  }
+
+  private async sendMessage(kind: string, payload: string): Promise<OutboxOutcome> {
+    const path = kind === 'highlight' ? API_ROUTES.highlights : API_ROUTES.recordsSync
+    try {
+      const response = await this.request(path, { method: 'POST', body: payload })
+      // 409 = déjà connu du serveur : l'entrée a bien atteint sa cible.
+      return response.ok || response.status === 409 ? 'sent' : 'retry'
+    } catch {
+      return 'retry'
+    }
+  }
+
+  /**
+   * Téléverse un clip, en trois temps.
+   *
+   * Le fichier ne passe pas par le serveur applicatif : celui-ci signe une
+   * autorisation, la vidéo monte directement vers le stockage objet, puis une
+   * confirmation rattache l'URL au temps fort. Sans ce troisième appel le clip
+   * existerait dans le stockage sans que rien ne le référence.
+   */
+  private async sendClip(job: ClipUploadJob): Promise<OutboxOutcome> {
+    const settings = getClientSettings()
+
+    /*
+     * Le réglage a pu changer depuis la mise en file. Le respecter maintenant
+     * plutôt qu'à l'enfilement évite qu'une file constituée avant l'arrêt du
+     * téléversement ne parte quand même à la première reconnexion.
+     */
+    if (!settings.capture.uploadToServer) return 'abandon'
+
+    /*
+     * Le fichier a pu être purgé par `pruneClips` avant que le serveur ne
+     * redevienne joignable. C'est un cas normal après une longue coupure, pas
+     * une erreur : le temps fort reste journalisé, seule la vidéo manque.
+     */
+    if (!existsSync(job.path)) return 'abandon'
+    const sizeBytes = statSync(job.path).size
+    if (sizeBytes === 0) return 'abandon'
+
+    const route = API_ROUTES.highlightClip(job.highlightId)
+
+    const ticketResponse = await this.request(route, {
+      method: 'POST',
+      body: JSON.stringify({
+        contentType: 'video/mp4',
+        sizeBytes,
+        durationMs: job.durationMs
+      })
+    })
+
+    if (ticketResponse.status === 401 || ticketResponse.status === 403) throw new Error('unauthorized')
+    // 413 : ce clip ne passera jamais, quelle que soit la patience.
+    if (ticketResponse.status === 413) return 'abandon'
+    if (!ticketResponse.ok) return 'retry'
+
+    const ticket = clipUploadTicketSchema.parse(await ticketResponse.json())
+
+    /*
+     * Envoi direct au stockage, sans passer par `request` : celui-ci ajoute la
+     * clé d'API et `content-type: application/json`, or la signature de l'URL
+     * couvre exactement les en-têtes annoncés. Un en-tête de trop et le
+     * stockage rejette le PUT.
+     */
+    const body = await readFile(job.path)
+    const upload = await fetch(ticket.uploadUrl, {
+      method: 'PUT',
+      headers: ticket.headers,
+      body: new Uint8Array(body),
+      signal: AbortSignal.timeout(UPLOAD_TIMEOUT_MS)
+    })
+    if (!upload.ok) return 'retry'
+
+    const confirm = await this.request(route, {
+      method: 'PUT',
+      body: JSON.stringify({
+        remoteUrl: ticket.publicUrl,
+        durationMs: job.durationMs,
+        sizeBytes
+      })
+    })
+    return confirm.ok ? 'sent' : 'retry'
   }
 
   /** Teste la liaison sans rien modifier — bouton « Tester » du panneau. */

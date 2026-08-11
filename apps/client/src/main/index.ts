@@ -140,6 +140,25 @@ async function handleHighlight(seed: Highlight): Promise<void> {
   // Le clip n'existe qu'après coup : on complète l'entrée déjà journalisée
   // plutôt que d'attendre la vidéo pour écrire quoi que ce soit.
   saveHighlight(seed, clip.path)
+
+  /*
+   * Mis en file après le temps fort, jamais avant : le serveur refuse un clip
+   * dont il ne connaît pas encore le temps fort. La file étant traitée dans
+   * l'ordre d'insertion, les deux partent dans le même passage.
+   */
+  if (settings.capture.uploadToServer) {
+    enqueue('clip', {
+      highlightId: seed.id,
+      path: clip.path,
+      durationMs: clip.durationMs
+    })
+  }
+
+  /*
+   * La purge vient après la mise en file, et c'est volontaire : `keepLocalClips`
+   * borne le disque, pas la file d'envoi. Un clip purgé avant d'être monté est
+   * abandonné proprement à la synchronisation suivante.
+   */
   pruneClips(settings.capture.keepLocalClips)
   replayQueue.push({
     highlight: seed,

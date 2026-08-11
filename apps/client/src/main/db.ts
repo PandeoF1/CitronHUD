@@ -184,8 +184,25 @@ export function saveHighlight(highlight: Highlight, clipPath: string | null = nu
     .run(highlight.id, JSON.stringify(highlight), clipPath, now())
 }
 
+/**
+ * Nature d'une entrée de la file d'envoi.
+ *
+ * `highlight` et `record` sont des messages JSON postés tels quels. `clip` est
+ * différent : la charge utile ne décrit qu'un fichier local, et l'envoi réel se
+ * fait en trois temps vers le stockage objet. L'ordre d'insertion compte — un
+ * clip référence un temps fort que le serveur doit déjà connaître.
+ */
+export type OutboxKind = 'highlight' | 'record' | 'clip'
+
+/** Ce qu'une entrée `clip` transporte : de quoi retrouver le fichier plus tard. */
+export interface ClipUploadJob {
+  highlightId: string
+  path: string
+  durationMs: number
+}
+
 /** Ajoute une entrée à la file d'envoi. */
-export function enqueue(kind: string, payload: unknown): void {
+export function enqueue(kind: OutboxKind, payload: unknown): void {
   getDb()
     .prepare('INSERT INTO outbox (kind, payload, created_at) VALUES (?, ?, ?)')
     .run(kind, JSON.stringify(payload), now())
@@ -193,7 +210,7 @@ export function enqueue(kind: string, payload: unknown): void {
 
 export interface OutboxRow {
   id: number
-  kind: string
+  kind: OutboxKind
   payload: string
   attempts: number
 }

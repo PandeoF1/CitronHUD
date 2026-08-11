@@ -19,9 +19,17 @@ const nextConfig: NextConfig = {
   images: { unoptimized: true },
   experimental: {
     serverActions: {
-      // Un logo d'équipe passe par une action serveur ; la limite par défaut de
-      // 1 Mo refuse un PNG d'organisation à peine détouré.
-      bodySizeLimit: '8mb'
+      /*
+       * Un logo d'équipe passe par une action serveur ; la limite par défaut de
+       * 1 Mo refuse un PNG d'organisation à peine détouré. Le bundle d'overlay
+       * passe par le même chemin et pèse davantage.
+       *
+       * Cette limite doit rester au-dessus de celles que le code vérifie
+       * lui-même : Next coupe la requête avant que l'action ne s'exécute, donc
+       * une limite applicative plus haute produirait une erreur illisible au
+       * lieu du message qui explique quoi corriger.
+       */
+      bodySizeLimit: '16mb'
     }
   }
 }

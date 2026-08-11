@@ -39,6 +39,75 @@ jobs:
       - name: Run unit tests
         run: pnpm test
 
+  # Les tests unitaires ne voient ni PostgreSQL ni le stockage objet, donc ni
+  # les contraintes d'unicité, ni les en-têtes de cache, ni un schéma Zod qui
+  # écrit `null` là où l'appelant n'a rien envoyé. C'est pourtant à cette
+  # jonction que les défauts atteignent l'antenne — d'où ce passage contre de
+  # vrais services.
+  server-e2e:
+    name: Server end-to-end
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:17-alpine
+        env:
+          POSTGRES_USER: citron
+          POSTGRES_PASSWORD: citron
+          POSTGRES_DB: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U citron -d postgres"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: citronhud
+          MINIO_ROOT_PASSWORD: citronhud-secret
+        ports:
+          - 9000:9000
+        options: >-
+          --health-cmd "curl -f http://localhost:9000/minio/health/live"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+
+    env:
+      POSTGRES_PASSWORD: citron
+      AUTH_SECRET: secret-de-ci-suffisamment-long-pour-passer
+      SEED_ADMIN_EMAIL: admin@citron.gg
+      SEED_ADMIN_PASSWORD: mot-de-passe-de-ci
+      S3_ENDPOINT: http://127.0.0.1:9000
+      S3_BUCKET: citronhud
+      MINIO_ROOT_USER: citronhud
+      MINIO_ROOT_PASSWORD: citronhud-secret
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build server
+        run: pnpm --filter @citronhud/server build
+
+      - name: Run end-to-end checks
+        run: pnpm --filter @citronhud/server test:e2e
+
   build-check:
     name: Build Monorepo
     runs-on: ubuntu-latest

@@ -14,6 +14,7 @@ import { apiKeys, highlights, players, records, teams } from '../../db/schema'
 import { hashApiKey } from '../../lib/api-key'
 import { currentUser } from '../../lib/auth'
 import { newApiKey, newId, slugify } from '../../lib/ids'
+import { makeCurrent, publishRelease } from '../../lib/overlay-release'
 import type { ActionState } from './action-state'
 
 /**
@@ -270,4 +271,49 @@ export async function deleteRecord(form: FormData): Promise<void> {
 
   await getDb().delete(records).where(eq(records.id, id))
   revalidatePath('/admin/records')
+}
+
+/* ---------------------------------------------------------------------------
+ * Versions de l'overlay
+ * ------------------------------------------------------------------------- */
+
+/**
+ * Publie une version de l'overlay.
+ *
+ * La vérification et l'écriture vivent dans `lib/overlay-release` : une action
+ * serveur ne s'appelle qu'à travers le protocole de React, donc ni depuis une
+ * chaîne d'intégration, ni depuis un test de bout en bout — or c'est bien la CI
+ * qui publiera le plus souvent.
+ */
+export async function publishOverlayRelease(
+  _state: ActionState,
+  form: FormData
+): Promise<ActionState> {
+  await guard()
+
+  const version = text(form, 'version')
+  if (!version) return failure('Indiquez une version.')
+
+  const file = form.get('bundle')
+  if (!(file instanceof File) || file.size === 0) return failure('Joignez une archive .zip.')
+
+  const outcome = await publishRelease({
+    version,
+    bundle: Buffer.from(await file.arrayBuffer()),
+    minClientVersion: text(form, 'minClientVersion') ?? undefined,
+    notes: text(form, 'notes') ?? undefined
+  })
+  if (!outcome.ok) return failure(outcome.message)
+
+  revalidatePath('/admin/overlay')
+  return { ok: true, message: `Version ${version} publiée et servie aux clients.` }
+}
+
+export async function setCurrentOverlayRelease(form: FormData): Promise<void> {
+  await guard()
+  const id = text(form, 'id')
+  if (!id) return
+
+  await makeCurrent(id)
+  revalidatePath('/admin/overlay')
 }

@@ -1,6 +1,8 @@
 import { and, eq } from 'drizzle-orm'
 import {
   beatsRecord,
+  recordMetricSchema,
+  recordScopeSchema,
   type CreateRecord,
   type GameRecord,
   type RecordMetric,
@@ -58,12 +60,25 @@ function candidateFrom(raw: unknown, sessionId: string | null, receivedAt: Date)
   if (typeof raw !== 'object' || raw === null) return null
   const source = raw as Partial<CreateRecord> & { achievedAt?: string }
 
-  if (typeof source.metric !== 'string' || typeof source.scope !== 'string') return null
   if (typeof source.value !== 'number' || !Number.isFinite(source.value)) return null
 
+  /*
+   * La métrique est validée contre l'énumération, pas simplement transtypée.
+   * Sans ce contrôle, une métrique inconnue — un client plus récent que le
+   * serveur, une faute de frappe — traverse jusqu'à `beatsRecord`, où
+   * `RECORD_DIRECTION[metric]` vaut `undefined` : la comparaison bascule alors
+   * sur « plus petit c'est mieux » et le record s'arbitre à l'envers, sans que
+   * rien ne le signale. Un cast n'est pas une validation.
+   */
+  const metric = recordMetricSchema.safeParse(source.metric)
+  if (!metric.success) return null
+
+  const scope = recordScopeSchema.safeParse(source.scope)
+  if (!scope.success) return null
+
   return {
-    scope: source.scope as RecordScope,
-    metric: source.metric as RecordMetric,
+    scope: scope.data,
+    metric: metric.data,
     steamId: source.steamId ?? null,
     playerName: source.playerName ?? null,
     playerAvatarUrl: source.playerAvatarUrl ?? null,
@@ -117,7 +132,11 @@ export function subjectKeyOf(candidate: RecordCandidate): string | null {
 
 export interface SyncOutcome {
   accepted: GameRecord[]
-  rejected: Array<{ metric: RecordMetric; steamId: string | null; reason: string }>
+  /**
+   * `metric` peut être nulle : un candidat écarté avant normalisation n'a
+   * précisément pas de métrique reconnaissable, et c'est l'information utile.
+   */
+  rejected: Array<{ metric: RecordMetric | null; steamId: string | null; reason: string }>
 }
 
 /**
@@ -126,16 +145,34 @@ export interface SyncOutcome {
  * Exportée pour être testable sans base : c'est la partie qui absorbe les deux
  * formes d'entrée, donc celle qui casse en silence si elle se trompe.
  */
-export function candidatesFrom(body: unknown, receivedAt = new Date()): RecordCandidate[] {
+export function candidatesFrom(body: unknown, receivedAt = new Date()): ParsedCandidates {
   const envelope = syncEnvelopeSchema.safeParse(body)
-  if (envelope.success) {
-    return envelope.data.candidates
-      .map((item) => candidateFrom(item, envelope.data.sessionId, receivedAt))
-      .filter((item): item is RecordCandidate => item !== null)
+  const raw = envelope.success ? envelope.data.candidates : [body]
+  const sessionId = envelope.success ? envelope.data.sessionId : null
+
+  const candidates: RecordCandidate[] = []
+  let unusable = 0
+
+  for (const item of raw) {
+    const candidate = candidateFrom(item, sessionId, receivedAt)
+    if (candidate) candidates.push(candidate)
+    else unusable += 1
   }
 
-  const single = candidateFrom(body, null, receivedAt)
-  return single ? [single] : []
+  return { candidates, unusable }
+}
+
+/**
+ * Résultat de la lecture d'une requête de synchronisation.
+ *
+ * `unusable` est compté plutôt qu'ignoré : un candidat écarté en silence est
+ * exactement le genre de chose qu'on ne découvre qu'en cherchant pourquoi un
+ * record « n'est jamais remonté ». Le compte revient dans la réponse, où le
+ * client peut le voir.
+ */
+export interface ParsedCandidates {
+  candidates: RecordCandidate[]
+  unusable: number
 }
 
 /**

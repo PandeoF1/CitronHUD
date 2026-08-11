@@ -50,6 +50,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
             },
             { href: '/admin/records', label: 'Records', count: recordCount[0]?.total ?? 0 },
             { href: '/admin/sessions', label: 'Sessions', count: sessionCount[0]?.total ?? 0 },
+            { href: '/admin/overlay', label: 'Overlay' },
             { href: '/admin/keys', label: "Clés d'API" }
           ]}
         />
