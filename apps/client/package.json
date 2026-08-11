@@ -15,15 +15,16 @@
     "package:linux": "electron-vite build && electron-builder --linux --publish never",
     "package:mac": "electron-vite build && electron-builder --mac --publish never"
   },
+  "repository": "https://github.com/PandeoF1/CitronHUD",
   "dependencies": {
     "adm-zip": "^0.5.16",
     "better-sqlite3": "^11.9.1",
     "cors": "^2.8.5",
-    "electron-updater": "^6.6.2",
     "express": "^4.21.2",
     "ffmpeg-static": "^5.2.0",
     "obs-websocket-js": "^5.0.6",
     "socket.io": "^4.8.1",
+    "update-electron-app": "^3.1.0",
     "zod": "^4.1.12"
   },
   "devDependencies": {

@@ -47,7 +47,7 @@ linux:
     - AppImage
   category: AudioVideo
 
-# Canal de mise à jour lu par electron-updater.
+# Canal de mise à jour lu par update-electron-app / electron-builder.
 publish:
   provider: github
   owner: PandeoF1

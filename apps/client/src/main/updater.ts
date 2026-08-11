@@ -1,5 +1,5 @@
 import { app } from 'electron'
-import { autoUpdater } from 'electron-updater'
+import { updateElectronApp } from 'update-electron-app'
 import AdmZip from 'adm-zip'
 import { createWriteStream, existsSync } from 'node:fs'
 import { rm, mkdir, rename, readFile } from 'node:fs/promises'
@@ -14,7 +14,7 @@ import { getClientSettings } from './settings'
 /**
  * Mises à jour — à deux vitesses.
  *
- * L'application elle-même passe par `electron-updater` (GitHub Releases), ce
+ * L'application elle-même passe par `update-electron-app` (GitHub Releases), ce
  * qui demande un redémarrage. Mais l'apparence du HUD change beaucoup plus
  * souvent que son moteur : le bundle d'overlay se met donc à jour tout seul,
  * sans réinstaller le client ni interrompre quoi que ce soit.
@@ -31,31 +31,23 @@ export interface UpdaterEvents {
 export function setupAppUpdater(events: UpdaterEvents): void {
   /*
    * Hors installation empaquetée il n'existe ni version applicative valable ni
-   * canal de publication : le seul accès au module `autoUpdater` lève alors
-   * ERR_UPDATER_INVALID_VERSION. Sortir avant l'import évite de faire échouer
-   * tout le démarrage pour une fonctionnalité qui n'a de sens qu'en production.
+   * canal de publication : sortir avant de configurer l'updater évite de faire
+   * échouer tout le démarrage pour une fonctionnalité qui n'a de sens qu'en production.
    */
   if (!app.isPackaged) return
 
   const settings = getClientSettings()
   if (!settings.autoUpdate) return
 
-  autoUpdater.autoDownload = true
-  // On n'installe jamais pendant que le client tourne : une mise à jour qui
-  // relance l'application en plein direct est un incident de diffusion.
-  autoUpdater.autoInstallOnAppQuit = true
-  autoUpdater.allowPrerelease = settings.updateChannel === 'beta'
-
-  autoUpdater.on('update-available', (info) =>
-    events.onStatus(`Mise à jour ${info.version} en téléchargement.`)
-  )
-  autoUpdater.on('update-downloaded', (info) =>
-    events.onStatus(`Mise à jour ${info.version} prête, appliquée à la fermeture.`)
-  )
-  autoUpdater.on('error', (error) => events.onStatus(`Mise à jour impossible : ${error.message}`))
-
-  void autoUpdater.checkForUpdates().catch(() => {
-    // Pas de réseau ou pas de canal configuré : sans conséquence.
+  updateElectronApp({
+    repo: 'PandeoF1/CitronHUD',
+    updateInterval: '10 minutes',
+    logger: {
+      log: (msg: string) => events.onStatus(msg),
+      info: (msg: string) => events.onStatus(msg),
+      warn: (msg: string) => events.onStatus(msg),
+      error: (msg: string) => events.onStatus(`Mise à jour impossible : ${msg}`)
+    }
   })
 }
 
